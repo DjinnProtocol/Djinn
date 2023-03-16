@@ -1,0 +1,6 @@
+default:
+    RUST_LOG=DEBUG cargo run
+lint:
+    cargo clippy --fix
+test:
+    cargo test

@@ -1,0 +1,7 @@
+[workspace]
+members = [
+    "djinn_client_cli",
+    "djinn_client_lib",
+    "djinn_core_lib",
+    "djinn_server"
+]
