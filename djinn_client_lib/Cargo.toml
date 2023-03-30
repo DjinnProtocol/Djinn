@@ -6,4 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+async-std = "1.12.0"
+async-trait = "0.1.66"
 djinn_core_lib = { path = "../djinn_core_lib" }
+futures = "0.3.27"
+log = "0.4.17"

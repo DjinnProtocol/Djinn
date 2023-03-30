@@ -8,3 +8,6 @@ edition = "2021"
 [dependencies]
 clap = { version = "4.1.8", features = ["cargo"] }
 djinn_client_lib = { path = "../djinn_client_lib" }
+futures = "0.3.26"
+log = "0.4.17"
+pretty_env_logger = "0.4.0"

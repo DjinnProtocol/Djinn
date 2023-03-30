@@ -1,0 +1,18 @@
+name: Build Server
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'djinn_server/**'
+
+jobs:
+  Build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      # Build docker image
+      - name: Build Docker image
+        run: docker build -t djinn_server .
+      # Push docker image to docker hub

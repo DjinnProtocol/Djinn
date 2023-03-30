@@ -1,0 +1,10 @@
+default:
+    RUST_LOG=DEBUG cargo run
+get:
+    cargo build --release && RUST_LOG=DEBUG ./target/release/djinn_client_cli --host 127.0.0.1 --port 7777 get test.jpg
+echo:
+    cargo build --release && RUST_LOG=DEBUG ../target/release/djinn_client_cli --host 127.0.0.1 --port 7777 echo
+lint:
+    cargo clippy --fix
+test:
+    cargo test

@@ -27,14 +27,15 @@ pub struct ControlPacket {
     pub params: HashMap<String, String>,
 }
 
-// impl ControlPacket {
-//     pub fn new(packet_type: ControlPacketType) -> ControlPacket {
-//         return ControlPacket {
-//             packet_type,
-//             params: HashMap::new(),
-//         };
-//     }
-// }
+impl ControlPacket {
+    pub fn new(control_packet_type: ControlPacketType, params: HashMap<String, String>) -> ControlPacket {
+        return ControlPacket {
+            packet_type: PacketType::Control,
+            control_packet_type,
+            params
+        };
+    }
+}
 
 impl Packet for ControlPacket {
     fn from_buffer(buffer: &Vec<u8>) -> ControlPacket {
