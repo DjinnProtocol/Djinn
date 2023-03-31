@@ -8,6 +8,7 @@ mod threads;
 mod connectivity;
 mod configuration;
 mod processing;
+mod jobs;
 
 #[macro_use] extern crate log;
 

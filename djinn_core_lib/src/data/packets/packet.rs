@@ -24,6 +24,7 @@ pub fn deserialize_packet(buffer: &Vec<u8>) -> impl Packet {
     }
 }
 
+#[cfg(test)]
 mod tests {
     use super::*;
 

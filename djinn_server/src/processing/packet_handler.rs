@@ -1,9 +1,8 @@
-use std::collections::HashMap;
-
-use async_std::io::WriteExt;
 use djinn_core_lib::data::packets::{packet::Packet, PacketType, ControlPacketType, ControlPacket};
 
 use crate::connectivity::Connection;
+
+use super::control_commands::{EchoRequestCommand, ControlCommand, TransferRequestCommand};
 
 
 
@@ -31,20 +30,12 @@ impl PacketHandler {
     pub async fn handle_control_packet(&self, packet: &ControlPacket, connection: &mut Connection) {
         match packet.control_packet_type {
             ControlPacketType::EchoRequest => {
-                let response = ControlPacket {
-                    packet_type: PacketType::Control,
-                    control_packet_type: ControlPacketType::EchoReply,
-                    params: HashMap::new(),
-                };
-
-                connection.stream.write(&response.to_buffer()).await.unwrap();
-
-            },
-            ControlPacketType::EchoReply => {
-                info!("Echo reply received");
+                let command = EchoRequestCommand {};
+                command.execute(connection, packet).await.unwrap();
             },
             ControlPacketType::TransferRequest => {
-
+                let command = TransferRequestCommand {};
+                command.execute(connection, packet).await.unwrap();
             },
             ControlPacketType::TransferAck => {
 
@@ -52,6 +43,10 @@ impl PacketHandler {
             ControlPacketType::TransferStart => {
 
             },
+            _ => {
+                // Throw error
+                panic!("Unknown control packet type")
+            }
         }
     }
 }

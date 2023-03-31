@@ -24,6 +24,8 @@ impl EchoCommand {
         // Wait for response
         let response_packet = connection.read_next_packet().await?;
 
+        debug!("Received echo response");
+
         if !matches!(response_packet.get_packet_type(), PacketType::Control) {
             return Err(Box::new(std::io::Error::new(
                 std::io::ErrorKind::Other,

@@ -5,6 +5,7 @@ pub struct ApplicationConfig {
     pub host: Option<String>,
     pub port: Option<u16>,
     pub amount_of_threads: Option<usize>,
+    pub serving_directory: Option<String>
 }
 
 impl ApplicationConfig {
@@ -27,6 +28,7 @@ impl ApplicationConfig {
             host: other.host.or(self.host.clone()),
             port: other.port.or(self.port),
             amount_of_threads: other.amount_of_threads.or(self.amount_of_threads),
+            serving_directory: other.serving_directory.or(self.serving_directory.clone())
         }
     }
 
@@ -35,6 +37,7 @@ impl ApplicationConfig {
             host: Some("127.0.0.1".to_string()),
             port: Some(7777),
             amount_of_threads: Some(4),
+            serving_directory: Some("./files".to_string())
         }
     }
 }

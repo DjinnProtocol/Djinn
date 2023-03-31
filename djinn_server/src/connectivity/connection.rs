@@ -1,13 +1,13 @@
 use async_std::{net::TcpStream, io::{BufReader, prelude::BufReadExt}};
 use djinn_core_lib::data::packets::packet::deserialize_packet;
 use uuid::Uuid;
-
-use crate::processing::PacketHandler;
+use crate::{processing::PacketHandler, jobs::Job};
 
 pub struct Connection {
     pub stream: TcpStream,
     pub thread_id: usize,
     pub uuid: Uuid,
+    pub jobs: Vec<Job>
 }
 
 impl Connection {
@@ -15,13 +15,13 @@ impl Connection {
         Connection {
             stream,
             thread_id,
-            uuid: Uuid::new_v4()
+            uuid: Uuid::new_v4(),
+            jobs: vec![]
         }
     }
 
     pub async fn listen(&mut self) {
         //Read using bufreader and until function
-
         loop {
             let mut buffer = vec![];
             let mut reader = BufReader::new(&mut self.stream);

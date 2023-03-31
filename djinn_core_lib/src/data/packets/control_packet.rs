@@ -8,14 +8,21 @@ pub enum ControlPacketType {
     EchoReply,
     TransferRequest,
     TransferAck,
+    TransferDeny,
     TransferStart
 }
+
+lazy 
 
 impl ControlPacketType {
     fn from_byte(byte: u8) -> ControlPacketType {
         match byte {
             0 => ControlPacketType::EchoRequest,
             1 => ControlPacketType::EchoReply,
+            2 => ControlPacketType::TransferRequest,
+            3 => ControlPacketType::TransferAck,
+            4 => ControlPacketType::TransferDeny,
+            5 => ControlPacketType::TransferStart,
             _ => panic!("Invalid control packet type"),
         }
     }
@@ -77,6 +84,8 @@ impl Packet for ControlPacket {
             buffer.push(b';');
         }
 
+        buffer.push(b'\n');
+
         return buffer;
     }
 
@@ -90,6 +99,7 @@ impl Packet for ControlPacket {
 }
 
 
+#[cfg(test)]
 mod tests {
     use super::*;
 
