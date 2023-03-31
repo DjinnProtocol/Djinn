@@ -9,10 +9,10 @@ use crate::{connectivity::Connection, CONFIG, jobs::{Job, JobType, JobStatus}};
 
 use super::ControlCommand;
 
-pub struct TransferRequestCommand {}
+pub struct TransferStartCommand {}
 
 #[async_trait]
-impl ControlCommand for TransferRequestCommand {
+impl ControlCommand for TransferStartCommand {
     async fn execute(&self, connection: &mut Connection, packet: &ControlPacket) -> Result<(), Box<dyn Error>> {
         let path = packet.params.get("file_path").unwrap();
         let full_path = CONFIG.serving_directory.clone().unwrap() + "/" + path;

@@ -1,11 +1,21 @@
 use std::collections::HashMap;
 
+#[derive(Clone)]
 pub enum JobType {
     Transfer
 }
 
+#[derive(Clone)]
+pub enum JobStatus {
+    Pending,
+    Running,
+    Finished
+}
+
+#[derive(Clone)]
 pub struct Job {
-    id: u32,
-    job_type: JobType,
-    args: HashMap<String, String>
+    pub id: u32,
+    pub job_type: JobType,
+    pub status: JobStatus,
+    pub params: HashMap<String, String>
 }

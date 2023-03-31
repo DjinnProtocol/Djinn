@@ -1,4 +1,4 @@
-use std::{ thread};
+use std::thread;
 
 use async_std::{net::TcpStream, task::block_on, channel::{Sender, unbounded}};
 

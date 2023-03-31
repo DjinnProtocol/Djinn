@@ -7,7 +7,8 @@ pub struct Connection {
     pub stream: TcpStream,
     pub thread_id: usize,
     pub uuid: Uuid,
-    pub jobs: Vec<Job>
+    pub jobs: Vec<Job>,
+    pub new_job_id: u32
 }
 
 impl Connection {
@@ -16,8 +17,14 @@ impl Connection {
             stream,
             thread_id,
             uuid: Uuid::new_v4(),
-            jobs: vec![]
+            jobs: vec![],
+            new_job_id: 0
         }
+    }
+
+    pub fn new_job_id(&mut self) -> u32 {
+        self.new_job_id += 1;
+        self.new_job_id
     }
 
     pub async fn listen(&mut self) {

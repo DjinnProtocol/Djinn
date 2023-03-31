@@ -12,8 +12,6 @@ pub enum ControlPacketType {
     TransferStart
 }
 
-lazy 
-
 impl ControlPacketType {
     fn from_byte(byte: u8) -> ControlPacketType {
         match byte {
@@ -24,6 +22,25 @@ impl ControlPacketType {
             4 => ControlPacketType::TransferDeny,
             5 => ControlPacketType::TransferStart,
             _ => panic!("Invalid control packet type"),
+        }
+    }
+}
+
+pub enum TransferDenyReason {
+    FileNotFound
+}
+
+impl TransferDenyReason {
+    pub fn from_string(reason: &str) -> TransferDenyReason {
+        match reason {
+            "FileNotFound" => TransferDenyReason::FileNotFound,
+            _ => panic!("Invalid transfer deny reason"),
+        }
+    }
+
+    pub fn to_string(&self) -> String {
+        match self {
+            TransferDenyReason::FileNotFound => "FileNotFound".to_string(),
         }
     }
 }
