@@ -1,6 +1,6 @@
 use std::{collections::HashMap, error::Error};
 
-use djinn_core_lib::data::packets::{packet::Packet, ControlPacket, ControlPacketType, PacketType};
+use djinn_core_lib::data::packets::{packet::Packet, ControlPacket, ControlPacketType, PacketType, DataPacket};
 
 use crate::connectivity::Connection;
 
@@ -75,8 +75,25 @@ impl GetCommand {
         debug!("Sent transfer start");
 
         //Wait for the server to send the file
+        while let Ok(packet) = connection.read_next_packet().await {
+            if !matches!(packet.get_packet_type(), PacketType::Data) {
+                return Err(Box::new(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "Unexpected packet type",
+                )));
+            }
 
-        
+            let data_packet = packet.as_any().downcast_ref::<DataPacket>().unwrap();
+
+            if data_packet.job_id != job_id.parse::<u32>().unwrap() {
+                return Err(Box::new(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "Unexpected job id",
+                )));
+            }
+
+            debug!("Received data packet");
+        }
 
         Ok("Hello".to_string())
     }

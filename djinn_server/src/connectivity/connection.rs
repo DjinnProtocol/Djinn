@@ -1,5 +1,5 @@
-use async_std::{net::TcpStream, io::{BufReader, prelude::BufReadExt}};
-use djinn_core_lib::data::packets::packet::deserialize_packet;
+use async_std::{net::TcpStream, io::{BufReader, prelude::BufReadExt, WriteExt}};
+use djinn_core_lib::data::packets::packet::{deserialize_packet, Packet};
 use uuid::Uuid;
 use crate::{processing::PacketHandler, jobs::Job};
 
@@ -22,9 +22,26 @@ impl Connection {
         }
     }
 
+    pub async fn send_packet(&mut self, packet: impl Packet) -> Result<(), Box<dyn std::error::Error>> {
+        let buffer = packet.to_buffer();
+        self.stream.write(&buffer).await.unwrap();
+
+        Ok(())
+    }
+
     pub fn new_job_id(&mut self) -> u32 {
         self.new_job_id += 1;
         self.new_job_id
+    }
+
+    pub fn get_job(&mut self, job_id: u32) -> Option<&mut Job> {
+        for job in &mut self.jobs {
+            if job.id == job_id {
+                return Some(job);
+            }
+        }
+
+        None
     }
 
     pub async fn listen(&mut self) {

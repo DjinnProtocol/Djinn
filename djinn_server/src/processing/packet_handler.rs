@@ -2,7 +2,7 @@ use djinn_core_lib::data::packets::{packet::Packet, PacketType, ControlPacketTyp
 
 use crate::connectivity::Connection;
 
-use super::control_commands::{EchoRequestCommand, ControlCommand, TransferRequestCommand};
+use super::control_commands::{EchoRequestCommand, ControlCommand, TransferRequestCommand, TransferStartCommand};
 
 
 
@@ -41,7 +41,8 @@ impl PacketHandler {
                 //Transfer reverse for server -> client
             },
             ControlPacketType::TransferStart => {
-                
+                let command = TransferStartCommand {};
+                command.execute(connection, packet).await.unwrap();
             },
             _ => {
                 // Throw error

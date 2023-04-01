@@ -1,6 +1,6 @@
 use std::any::Any;
 
-use super::{PacketType, ControlPacket};
+use super::{PacketType, ControlPacket, DataPacket};
 
 pub trait Packet {
     fn from_buffer(buffer: &Vec<u8>) -> Self;
@@ -9,19 +9,20 @@ pub trait Packet {
     fn as_any(&self) -> &dyn Any;
 }
 
-pub fn deserialize_packet(buffer: &Vec<u8>) -> impl Packet {
+pub fn deserialize_packet(buffer: &Vec<u8>) -> Box<dyn Packet> {
     let packet_type_byte = buffer[0];
     let packet_type = PacketType::from_byte(packet_type_byte);
 
-    match packet_type {
+    let temporary_packet: Box<dyn Packet> = match packet_type {
         PacketType::Control => {
-            return ControlPacket::from_buffer(buffer);
+            Box::new(ControlPacket::from_buffer(buffer))
         },
         PacketType::Data => {
-            // Throw error
-            panic!("Data packets are not supported yet")
+            Box::new(DataPacket::from_buffer(buffer))
         }
-    }
+    };
+
+    return temporary_packet;
 }
 
 #[cfg(test)]

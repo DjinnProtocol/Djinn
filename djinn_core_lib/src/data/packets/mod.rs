@@ -6,3 +6,6 @@ pub mod packet;
 
 mod packet_type;
 pub use packet_type::PacketType;
+
+mod data_packet;
+pub use data_packet::DataPacket;

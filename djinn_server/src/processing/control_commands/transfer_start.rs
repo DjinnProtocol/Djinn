@@ -1,8 +1,11 @@
 use std::{collections::HashMap, error::Error};
-use async_std::fs;
+use async_std::fs::{self, File};
 
-use async_std::io::WriteExt;
+
+use async_std::io::{WriteExt, BufReader, ReadExt};
+use async_std::stream::StreamExt;
 use async_trait::async_trait;
+use djinn_core_lib::data::packets::DataPacket;
 use djinn_core_lib::data::packets::{ControlPacket, PacketType, ControlPacketType, packet::Packet, TransferDenyReason};
 
 use crate::{connectivity::Connection, CONFIG, jobs::{Job, JobType, JobStatus}};
@@ -14,36 +17,51 @@ pub struct TransferStartCommand {}
 #[async_trait]
 impl ControlCommand for TransferStartCommand {
     async fn execute(&self, connection: &mut Connection, packet: &ControlPacket) -> Result<(), Box<dyn Error>> {
-        let path = packet.params.get("file_path").unwrap();
-        let full_path = CONFIG.serving_directory.clone().unwrap() + "/" + path;
+        // Get the file path from the packet
+        let job_id = packet.params.get("job_id").unwrap().parse::<u32>().unwrap();
 
+        // Get the job from the connection
+        let job = connection.get_job(job_id).unwrap();
 
-        //Check if file exists if download request
-        if !fs::metadata(full_path).await.is_ok() {
-            let mut params = HashMap::new();
-            params.insert("reason".to_string(), TransferDenyReason::FileNotFound.to_string());
-
-            let response = ControlPacket::new(ControlPacketType::TransferDeny, params);
-            connection.stream.write(&response.to_buffer()).await.unwrap();
-
-            return Ok(());
+        // If the job is not a transfer job, return an error
+        if !matches!(job.job_type, JobType::Transfer) {
+            return Err(Box::new(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Job is not a transfer job",
+            )));
         }
 
-        //Create job
-        let job = Job {
-            id: connection.new_job_id(),
-            job_type: JobType::Transfer,
-            status: JobStatus::Pending,
-            params: packet.params.clone()
-        };
+        // If the job is not in the pending state, return an error
+        if !matches!(job.status, JobStatus::Pending) {
+            return Err(Box::new(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Job is not in the pending state",
+            )));
+        }
 
-        connection.jobs.push(job.clone());
+        // Get the file path from the job
+        let file_path = job.params.get("file_path").unwrap();
+        let full_path = CONFIG.serving_directory.clone().unwrap() + "/" + file_path;
 
-        //Send response
-        let mut response = ControlPacket::new(ControlPacketType::TransferAck, HashMap::new());
-        response.params.insert("job_id".to_string(), job.id.to_string());
-        connection.stream.write(&response.to_buffer()).await.unwrap();
+        // Open da file
+        let file = File::open(full_path).await?;
+        let mut bytes_iterator = BufReader::new(file).bytes();
+        let mut buffer = vec![0; 65536];
 
+        // Send the file to the client
+        while let Some(byte) = bytes_iterator.next().await {
+            let byte = byte?;
+            buffer.push(byte);
+            if buffer.len() == 65536 {
+                let packet = DataPacket::new(job_id, buffer.clone());
+                connection.send_packet(packet).await?;
+                buffer.clear();
+            }
+        }
+
+        // Send the last packet
+        let packet = DataPacket::new(job_id, buffer.clone());
+        connection.send_packet(packet).await?;
 
         return Ok(());
     }
