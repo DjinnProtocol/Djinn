@@ -1,4 +1,4 @@
-use djinn_core_lib::data::packets::{packet::Packet, PacketType, ControlPacketType, ControlPacket};
+use djinn_core_lib::data::packets::{packet::{Packet, self}, PacketType, ControlPacketType, ControlPacket};
 
 use crate::connectivity::Connection;
 
@@ -11,14 +11,15 @@ pub struct PacketHandler {
 }
 
 impl PacketHandler {
-    pub async fn handle_packet(&self, packet: &impl Packet, connection: &mut Connection) {
-        match packet.get_packet_type() {
+    pub async fn handle_boxed_packet<'a>(&self, boxed_packet: Box<dyn Packet + 'a>, connection: &mut Connection) {
+        let packet_ref: &dyn Packet = boxed_packet.as_ref();
+
+        match packet_ref.get_packet_type() {
             PacketType::Control => {
                 info!("Control packet received");
-                let control_packet = packet.as_any()
-                .downcast_ref::<ControlPacket>().unwrap();
+                let control_packet = packet_ref.as_any().downcast_ref::<ControlPacket>().unwrap();
 
-                self.handle_control_packet(control_packet, connection).await;
+                self.handle_control_packet(&control_packet, connection).await;
             },
             PacketType::Data => {
                 // Throw error

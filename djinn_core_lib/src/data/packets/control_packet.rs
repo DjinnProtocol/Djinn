@@ -9,7 +9,8 @@ pub enum ControlPacketType {
     TransferRequest,
     TransferAck,
     TransferDeny,
-    TransferStart
+    TransferStart,
+    None
 }
 
 impl ControlPacketType {
@@ -21,6 +22,7 @@ impl ControlPacketType {
             3 => ControlPacketType::TransferAck,
             4 => ControlPacketType::TransferDeny,
             5 => ControlPacketType::TransferStart,
+            6 => ControlPacketType::None,
             _ => panic!("Invalid control packet type"),
         }
     }
@@ -62,11 +64,11 @@ impl ControlPacket {
 }
 
 impl Packet for ControlPacket {
-    fn from_buffer(buffer: &Vec<u8>) -> ControlPacket {
-        let mut params: HashMap<String, String> = HashMap::new();
-        let packet_type = ControlPacketType::from_byte(buffer[1]);
+    fn fill_from_buffer(&mut self, buffer: &Vec<u8>) {
+        self.control_packet_type = ControlPacketType::from_byte(buffer[5]);
+        self.params = HashMap::new();
 
-        let buffer = &buffer[2..];
+        let buffer = &buffer[6..];
 
         if buffer.len() > 2 {
             let params_string = String::from_utf8(buffer.to_vec()).unwrap();
@@ -78,19 +80,15 @@ impl Packet for ControlPacket {
                 }
                 let param_split = param.split('=');
                 let param_split_vec: Vec<&str> = param_split.collect();
-                params.insert(param_split_vec[0].to_string(), param_split_vec[1].to_string());
+                self.params.insert(param_split_vec[0].to_string(), param_split_vec[1].to_string());
             }
         }
-        
-        return ControlPacket {
-            packet_type: PacketType::Control,
-            control_packet_type: packet_type,
-            params,
-        };
     }
 
     fn to_buffer(&self) -> Vec<u8> {
         let mut buffer: Vec<u8> = Vec::new();
+        //Add packet size
+        buffer.extend((self.calculate_packet_size().to_be_bytes()).to_vec());
         buffer.push(self.packet_type as u8);
         buffer.push(self.control_packet_type as u8);
 
@@ -101,9 +99,17 @@ impl Packet for ControlPacket {
             buffer.push(b';');
         }
 
-        buffer.push(b'\n');
-
         return buffer;
+    }
+
+    fn calculate_packet_size(&self) -> u32 {
+        let mut size: u32 = 6;
+
+        for (key, value) in &self.params {
+            size += (key.len() + value.len() + 2) as u32;
+        }
+
+        return size
     }
 
     fn get_packet_type(&self) -> PacketType {
@@ -131,10 +137,17 @@ mod tests {
         control_packet.params.insert("a".to_string(), "b".to_string());
 
         let buffer = control_packet.to_buffer();
-        let control_packet = ControlPacket::from_buffer(&buffer);
 
-        assert!(matches!(control_packet.packet_type, PacketType::Control));
-        assert!(matches!(control_packet.control_packet_type, ControlPacketType::EchoRequest));
-        assert_eq!(control_packet.params.get("a").unwrap(), "b");
+        let mut control_packet2 = ControlPacket {
+            packet_type: PacketType::Control,
+            control_packet_type: ControlPacketType::None,
+            params: HashMap::new(),
+        };
+        control_packet2.fill_from_buffer(&buffer);
+
+
+        assert!(matches!(control_packet2.packet_type, PacketType::Control));
+        assert!(matches!(control_packet2.control_packet_type, ControlPacketType::EchoRequest));
+        assert_eq!(control_packet2.params.get("a").unwrap(), "b");
     }
 }

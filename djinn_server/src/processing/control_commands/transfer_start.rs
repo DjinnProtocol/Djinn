@@ -46,22 +46,33 @@ impl ControlCommand for TransferStartCommand {
         // Open da file
         let file = File::open(full_path).await?;
         let mut bytes_iterator = BufReader::new(file).bytes();
-        let mut buffer = vec![0; 65536];
+        let mut buffer = Vec::new();
 
         // Send the file to the client
         while let Some(byte) = bytes_iterator.next().await {
             let byte = byte?;
             buffer.push(byte);
-            if buffer.len() == 65536 {
+            if buffer.len() == 60000 {
+                debug!("Sending data packet normally");
                 let packet = DataPacket::new(job_id, buffer.clone());
                 connection.send_packet(packet).await?;
+                debug!("Sent data packet");
                 buffer.clear();
             }
         }
 
         // Send the last packet
-        let packet = DataPacket::new(job_id, buffer.clone());
+        if buffer.len() > 0 {
+            let packet = DataPacket::new(job_id, buffer.clone());
+            connection.send_packet(packet).await?;
+            debug!("Sent last data packet");
+        }
+
+        // Send the end packet
+        let packet = DataPacket::new(job_id, vec![]);
         connection.send_packet(packet).await?;
+
+        connection.stream.flush().await?;
 
         return Ok(());
     }

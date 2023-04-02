@@ -1,6 +1,7 @@
 use std::{collections::HashMap, error::Error};
 
-use djinn_core_lib::data::packets::{packet::Packet, ControlPacket, ControlPacketType, PacketType, DataPacket};
+use async_std::{fs::File, io::WriteExt};
+use djinn_core_lib::data::packets::{packet::Packet, ControlPacket, ControlPacketType, PacketType, DataPacket, PacketReader};
 
 use crate::connectivity::Connection;
 
@@ -74,27 +75,50 @@ impl GetCommand {
 
         debug!("Sent transfer start");
 
+        //Open file
+        let mut file = File::create(self.file_path.clone()).await?;
+
         //Wait for the server to send the file
-        while let Ok(packet) = connection.read_next_packet().await {
-            if !matches!(packet.get_packet_type(), PacketType::Data) {
-                return Err(Box::new(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    "Unexpected packet type",
-                )));
+        loop {
+            let mut packet_reader = PacketReader::new();
+            let mut packets = vec![];
+            let amount_read = packet_reader.read(&mut connection.stream.as_mut().unwrap(), &mut packets).await;
+
+            debug!("Received {} packets", amount_read);
+
+            // if amount_read == 0 {
+            //     // Connection closed
+            //     debug!("Connection closed");
+            //     break;
+            // }
+
+            let mut last_packet_received = false;
+
+            for packet in packets {
+                let data_packet = packet
+                    .as_any()
+                    .downcast_ref::<DataPacket>()
+                    .unwrap();
+
+                // debug!("Reveived: {:?}", String::from_utf8(data_packet.data.clone()));
+
+                if data_packet.data.len() == 0 {
+                    last_packet_received = true;
+                    break;
+                }
+
+                file.write_all(&data_packet.data).await?;
             }
 
-            let data_packet = packet.as_any().downcast_ref::<DataPacket>().unwrap();
-
-            if data_packet.job_id != job_id.parse::<u32>().unwrap() {
-                return Err(Box::new(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    "Unexpected job id",
-                )));
+            if last_packet_received {
+                break;
             }
-
-            debug!("Received data packet");
         }
 
-        Ok("Hello".to_string())
+        debug!("Transfer complete");
+
+        file.flush().await?;
+
+        Ok("Transfer complete".to_string())
     }
 }

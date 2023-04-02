@@ -21,8 +21,8 @@ impl ClientInstance {
     command.execute(&mut self.connection).await.expect("AAA");
   }
 
-  pub async fn get_as_iterator(&mut self, filePath: String) {
-    let command = GetCommand::new(filePath);
+  pub async fn get_as_iterator(&mut self, file_path: String) {
+    let command = GetCommand::new(file_path);
     let str = command.execute(&mut self.connection).await.expect("AAA");
     println!("{}", str);
   }

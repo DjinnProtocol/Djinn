@@ -1,24 +1,33 @@
-use std::any::Any;
+use std::{any::Any, collections::HashMap};
 
-use super::{PacketType, ControlPacket, DataPacket};
+use super::{PacketType, ControlPacket, DataPacket, ControlPacketType};
 
-pub trait Packet {
-    fn from_buffer(buffer: &Vec<u8>) -> Self;
+pub trait Packet: Send + Sync {
+    fn fill_from_buffer(&mut self, buffer: &Vec<u8>);
     fn to_buffer(&self) -> Vec<u8>;
     fn get_packet_type(&self) -> PacketType;
+    fn calculate_packet_size(&self) -> u32;
     fn as_any(&self) -> &dyn Any;
 }
 
+pub fn get_packet_length(buffer: &Vec<u8>) -> u32 {
+    return u32::from_be_bytes([buffer[0], buffer[1], buffer[2], buffer[3]]);
+}
+
 pub fn deserialize_packet(buffer: &Vec<u8>) -> Box<dyn Packet> {
-    let packet_type_byte = buffer[0];
+    let packet_type_byte = buffer[4];
     let packet_type = PacketType::from_byte(packet_type_byte);
 
     let temporary_packet: Box<dyn Packet> = match packet_type {
         PacketType::Control => {
-            Box::new(ControlPacket::from_buffer(buffer))
+            let mut control_packet = ControlPacket::new(ControlPacketType::None, HashMap::new());
+            control_packet.fill_from_buffer(buffer);
+            Box::new(control_packet)
         },
         PacketType::Data => {
-            Box::new(DataPacket::from_buffer(buffer))
+            let mut data_packet = DataPacket::new(0, Vec::new());
+            data_packet.fill_from_buffer(buffer);
+            Box::new(data_packet)
         }
     };
 
@@ -31,9 +40,11 @@ mod tests {
 
     #[test]
     fn test_deserialize_control_packet() {
-        let buffer: Vec<u8> = vec![0, 0];
-        let packet = deserialize_packet(&buffer);
+        let buffer: Vec<u8> = DataPacket::new(0, vec![]).to_buffer();
+        let boxed_packet = deserialize_packet(&buffer);
+        let packet_ref: &dyn Packet = boxed_packet.as_ref();
 
-        assert!(!matches!(packet.get_packet_type(), PacketType::Data));
+
+        assert!(matches!(packet_ref.get_packet_type(), PacketType::Data));
     }
 }

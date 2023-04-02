@@ -9,3 +9,6 @@ pub use packet_type::PacketType;
 
 mod data_packet;
 pub use data_packet::DataPacket;
+
+mod packet_reader;
+pub use packet_reader::PacketReader;

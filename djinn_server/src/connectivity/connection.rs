@@ -1,14 +1,20 @@
-use async_std::{net::TcpStream, io::{BufReader, prelude::BufReadExt, WriteExt}};
-use djinn_core_lib::data::packets::packet::{deserialize_packet, Packet};
+use crate::{jobs::Job, processing::PacketHandler};
+use async_std::{
+    io::{prelude::BufReadExt, BufReader, ReadExt, WriteExt},
+    net::TcpStream,
+};
+use djinn_core_lib::data::packets::{
+    packet::{self, deserialize_packet, get_packet_length, Packet},
+    PacketReader,
+};
 use uuid::Uuid;
-use crate::{processing::PacketHandler, jobs::Job};
 
 pub struct Connection {
     pub stream: TcpStream,
     pub thread_id: usize,
     pub uuid: Uuid,
     pub jobs: Vec<Job>,
-    pub new_job_id: u32
+    pub new_job_id: u32,
 }
 
 impl Connection {
@@ -18,13 +24,17 @@ impl Connection {
             thread_id,
             uuid: Uuid::new_v4(),
             jobs: vec![],
-            new_job_id: 0
+            new_job_id: 0,
         }
     }
 
-    pub async fn send_packet(&mut self, packet: impl Packet) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn send_packet(
+        &mut self,
+        packet: impl Packet,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let buffer = packet.to_buffer();
-        self.stream.write(&buffer).await.unwrap();
+
+        self.stream.write_all(&buffer).await.unwrap();
 
         Ok(())
     }
@@ -45,23 +55,22 @@ impl Connection {
     }
 
     pub async fn listen(&mut self) {
-        //Read using bufreader and until function
+        // Handle incoming streams
         loop {
-            let mut buffer = vec![];
-            let mut reader = BufReader::new(&mut self.stream);
-            reader.read_until(b'\n', &mut buffer).await.unwrap();
+            let mut packet_reader = PacketReader::new();
+            let mut packets = vec![];
+            let amount_read = packet_reader.read(&mut self.stream, &mut packets).await;
 
-
-            if buffer.len() == 0 {
-                continue;
+            if amount_read == 0 {
+                // Connection closed
+                debug!("Connection closed");
+                break;
             }
 
-            println!("Buffer: {:?}", String::from_utf8(buffer.clone()));
-
-            let packet = deserialize_packet(&buffer);
-
-            let packet_handler = PacketHandler {};
-            packet_handler.handle_packet(&packet, self).await;
+            for packet in packets {
+                let packet_handler = PacketHandler {};
+                packet_handler.handle_boxed_packet(packet, self).await;
+            }
         }
     }
 }
