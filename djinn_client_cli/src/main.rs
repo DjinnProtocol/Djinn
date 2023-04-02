@@ -23,6 +23,12 @@ async fn async_main() {
                 .about("Get a file from the host")
                 .arg(arg!( --file -f [FILE] "The file to get").required(true))
                 .arg(arg!( --destination -d [DISTINATION] "The destination").required(true)),
+        )
+        .subcommand(
+            Command::new("put")
+                .about("Put a file on the host")
+                .arg(arg!( --file -f [FILE] "The file to put").required(true))
+                .arg(arg!( --destination -d [DISTINATION] "The destination").required(true)),
         );
 
     let matches = matches.get_matches();
@@ -45,6 +51,16 @@ async fn async_main() {
             let file = file_arg.to_owned();
             debug!("File: {}", file);
             djinn_client.get_as_iterator(file).await;
+        }
+        Some(("put", matches)) => {
+            debug!("Put command called");
+            let file_arg = matches.get_one::<String>("file").unwrap();
+            let file = file_arg.to_owned();
+            debug!("File: {}", file);
+            let destination_arg = matches.get_one::<String>("destination").unwrap();
+            let destination = destination_arg.to_owned();
+            debug!("Destination: {}", destination);
+            djinn_client.put(file, destination).await;
         }
         _ => unreachable!(),
     }
