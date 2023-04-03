@@ -49,7 +49,7 @@ impl ControlCommand for TransferStartCommand {
 
         for packet in iterator {
             connection.stream.write(&packet.to_buffer()).await.unwrap();
-            debug!("sent: {:?}", String::from_utf8(packet.data.clone()));
+            // debug!("sent: {:?}", String::from_utf8(packet.data.clone()));
 
         }
 

@@ -2,8 +2,8 @@ use clap::{arg, Command};
 use djinn_client_lib::DjinnClient;
 use futures::executor::block_on;
 
-#[macro_use] extern crate log;
-
+#[macro_use]
+extern crate log;
 
 fn main() {
     pretty_env_logger::init();

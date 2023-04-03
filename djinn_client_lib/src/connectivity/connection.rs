@@ -70,7 +70,7 @@ impl Connection {
             let bytes_read = reader.read(&mut buffer).await?;
             let received_buffer = buffer[..bytes_read].to_vec();
 
-            debug!("Reveived: {:?}", String::from_utf8(received_buffer.clone()));
+            // debug!("Reveived: {:?}", String::from_utf8(received_buffer.clone()));
 
             if received_buffer.len() == 0 {
                 return Err(Box::new(std::io::Error::new(

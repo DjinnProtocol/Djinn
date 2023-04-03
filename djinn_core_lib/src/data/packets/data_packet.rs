@@ -7,15 +7,19 @@ pub struct DataPacket {
     pub job_id: u32,
     pub packet_number: u32,
     pub data: Vec<u8>,
+    pub has_data: bool
 }
 
 impl DataPacket {
     pub fn new(job_id: u32, data: Vec<u8>, packet_number: u32) -> DataPacket {
+        let has_data = data.len() > 0;
+
         return DataPacket {
             packet_type: PacketType::Data,
             job_id,
             packet_number,
-            data
+            data,
+            has_data
         };
     }
 }
@@ -24,7 +28,13 @@ impl Packet for DataPacket {
     fn fill_from_buffer(&mut self, buffer: &Vec<u8>){
         self.job_id = u32::from_be_bytes([buffer[5], buffer[6], buffer[7], buffer[8]]);
         self.packet_number = u32::from_be_bytes([buffer[9], buffer[10], buffer[11], buffer[12]]);
-        self.data = buffer[13..].to_vec();
+        if buffer.len() > 13 {
+            self.has_data = true;
+            self.data = buffer[13..].to_vec();
+        } else {
+            self.data = vec![]
+        }
+        debug!("Data packet filled from buffer");
     }
 
     fn to_buffer(&self) -> Vec<u8> {

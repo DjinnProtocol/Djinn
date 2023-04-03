@@ -59,16 +59,18 @@ impl Connection {
         loop {
             let mut reader = BufReader::new(&mut self.stream);
             let mut packet_reader = PacketReader::new();
-            let packet = packet_reader.read(&mut reader).await;
+            let packets = packet_reader.read(&mut reader).await;
 
-            if packet.is_none() {
+            if packets.len() == 0 {
                 // Connection closed
                 debug!("Connection closed");
                 break;
             }
 
-            let packet_handler = PacketHandler {};
-            packet_handler.handle_boxed_packet(packet.unwrap(), self).await;
+            for packet in packets {
+                let packet_handler = PacketHandler {};
+                packet_handler.handle_boxed_packet(packet, self).await;
+            }
         }
     }
 }

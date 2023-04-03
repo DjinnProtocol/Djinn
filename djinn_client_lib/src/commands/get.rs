@@ -83,27 +83,31 @@ impl GetCommand {
         //Wait for the server to send the file
         let mut reader = BufReader::new(connection.stream.as_mut().unwrap());
         let mut packet_reader = PacketReader::new();
+        let mut last_packet_received = false;
 
-        loop {
-            let packet = packet_reader.read(&mut reader).await;
+        while !last_packet_received {
+            let packets = packet_reader.read(&mut reader).await;
 
-            if packet.is_none() {
+            if packets.len() == 0 {
                 debug!("Connection closed");
                 break;
             }
 
-            let data_packet = packet.as_ref().unwrap()
-                .as_any()
-                .downcast_ref::<DataPacket>()
-                .unwrap();
+            for packet in packets {
+                let data_packet = packet
+                    .as_any()
+                    .downcast_ref::<DataPacket>()
+                    .unwrap();
 
-            debug!("Reveived: {:?}", String::from_utf8(data_packet.data.clone()));
+                // debug!("Reveived: {:?}", String::from_utf8(data_packet.data.clone()));
 
-            if data_packet.data.len() == 0 {
-                break;
+                if !data_packet.has_data {
+                    last_packet_received = true;
+                    break;
+                }
+
+                file.write_all(&data_packet.data).await?;
             }
-
-            file.write_all(&data_packet.data).await?;
         }
 
         debug!("Transfer complete");
