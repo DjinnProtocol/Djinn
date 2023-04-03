@@ -5,7 +5,7 @@ use async_std::fs::{self, File};
 use async_std::io::{WriteExt, BufReader, ReadExt};
 use async_std::stream::StreamExt;
 use async_trait::async_trait;
-use djinn_core_lib::data::packets::DataPacket;
+use djinn_core_lib::data::packets::{DataPacket, DataPacketGeneratorIterator, DataPacketGenerator};
 use djinn_core_lib::data::packets::{ControlPacket, PacketType, ControlPacketType, packet::Packet, TransferDenyReason};
 
 use crate::{connectivity::Connection, CONFIG, jobs::{Job, JobType, JobStatus}};
@@ -44,33 +44,14 @@ impl ControlCommand for TransferStartCommand {
         let full_path = CONFIG.serving_directory.clone().unwrap() + "/" + file_path;
 
         // Open da file
-        let file = File::open(full_path).await?;
-        let mut bytes_iterator = BufReader::new(file).bytes();
-        let mut buffer = Vec::new();
+        let packet_generator = DataPacketGenerator::new(job_id, full_path);
+        let iterator = packet_generator.iter();
 
-        // Send the file to the client
-        while let Some(byte) = bytes_iterator.next().await {
-            let byte = byte?;
-            buffer.push(byte);
-            if buffer.len() == 60000 {
-                debug!("Sending data packet normally");
-                let packet = DataPacket::new(job_id, buffer.clone());
-                connection.send_packet(packet).await?;
-                debug!("Sent data packet");
-                buffer.clear();
-            }
+        for packet in iterator {
+            connection.stream.write(&packet.to_buffer()).await.unwrap();
+            // debug!("sent: {:?}", String::from_utf8(packet.data.clone()));
+
         }
-
-        // Send the last packet
-        if buffer.len() > 0 {
-            let packet = DataPacket::new(job_id, buffer.clone());
-            connection.send_packet(packet).await?;
-            debug!("Sent last data packet");
-        }
-
-        // Send the end packet
-        let packet = DataPacket::new(job_id, vec![]);
-        connection.send_packet(packet).await?;
 
         connection.stream.flush().await?;
 

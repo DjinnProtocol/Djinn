@@ -27,6 +27,11 @@ impl ClientInstance {
     println!("{}", str);
   }
 
+  pub async fn put(&mut self, file_path: String, destination: String) {
+    // let command = PutCommand::new(file_path, destination);
+    // command.execute(&mut self.connection).await.expect("AAA");
+  }
+
   pub async fn disconnect(&mut self) -> Result<(), Box<dyn Error>> {
     self.connection.disconnect().await
   }

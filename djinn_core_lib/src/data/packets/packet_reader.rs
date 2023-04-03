@@ -27,10 +27,11 @@ impl PacketReader {
         let mut reader = BufReader::new(stream);
 
         loop {
-            let mut buffer = vec![0; 1024];
+            let mut buffer = vec![0; 65535];
             debug!("Listening for packets...");
             let bytes_read = reader.read(&mut buffer).await.unwrap();
             let mut filled_buffer = buffer[..bytes_read].to_vec();
+            // debug!("Buffer received: {:?}", String::from_utf8(filled_buffer.clone()));
 
             if bytes_read == 0 {
                 return packets_count;

@@ -60,7 +60,7 @@ async fn async_main() {
             let destination_arg = matches.get_one::<String>("destination").unwrap();
             let destination = destination_arg.to_owned();
             debug!("Destination: {}", destination);
-            djinn_client.put(file, destination).await;
+            // djinn_client.put(file, destination).await;
         }
         _ => unreachable!(),
     }

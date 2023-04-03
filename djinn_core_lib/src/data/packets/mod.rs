@@ -12,3 +12,7 @@ pub use data_packet::DataPacket;
 
 mod packet_reader;
 pub use packet_reader::PacketReader;
+
+mod data_packet_generator;
+pub use data_packet_generator::DataPacketGeneratorIterator;
+pub use data_packet_generator::DataPacketGenerator;

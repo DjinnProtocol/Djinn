@@ -5,13 +5,13 @@ use djinn_core_lib::data::packets::{packet::Packet, ControlPacket, ControlPacket
 
 use crate::connectivity::Connection;
 
-pub struct GetCommand {
+pub struct PutCommand {
     file_path: String,
 }
 
-impl GetCommand {
+impl PutCommand {
     pub fn new(file_path: String) -> Self {
-        GetCommand { file_path }
+        PutCommand { file_path }
     }
 
     pub async fn execute(&self, connection: &mut Connection) -> Result<String, Box<dyn Error>> {
@@ -19,7 +19,8 @@ impl GetCommand {
         debug!("Sending transfer request");
         let mut params = HashMap::new();
         params.insert("file_path".to_string(), self.file_path.clone());
-        params.insert("type".to_string(), "get".to_string());
+        params.insert("type".to_string(), "put".to_string());
+
 
         let packet = ControlPacket::new(ControlPacketType::TransferRequest, params);
         connection.send_packet(packet).await?;
@@ -69,57 +70,11 @@ impl GetCommand {
         debug!("Transfer accepted, starting transfer");
 
         let job_id = control_packet.params.get("job_id").unwrap();
-
-        //Send start transfer packet
-        let mut packet = ControlPacket::new(ControlPacketType::TransferStart, HashMap::new());
-        packet.params.insert("job_id".to_string(), job_id.clone());
-        connection.send_packet(packet).await?;
-
-        debug!("Sent transfer start");
-
-        //Open file
         let mut file = File::create(self.file_path.clone()).await?;
 
-        //Wait for the server to send the file
-        loop {
-            let mut packet_reader = PacketReader::new();
-            let mut packets = vec![];
-            let amount_read = packet_reader.read(&mut connection.stream.as_mut().unwrap(), &mut packets).await;
+        //Send file parts
+        
 
-            debug!("Received {} packets", amount_read);
-
-            if amount_read == 0 {
-                // Connection closed
-                debug!("Connection closed");
-                break;
-            }
-
-            let mut last_packet_received = false;
-
-            for packet in packets {
-                let data_packet = packet
-                    .as_any()
-                    .downcast_ref::<DataPacket>()
-                    .unwrap();
-
-                // debug!("Reveived: {:?}", String::from_utf8(data_packet.data.clone()));
-
-                if data_packet.data.len() == 0 {
-                    last_packet_received = true;
-                    break;
-                }
-
-                file.write_all(&data_packet.data).await?;
-            }
-
-            if last_packet_received {
-                break;
-            }
-        }
-
-        debug!("Transfer complete");
-
-        file.flush().await?;
 
         Ok("Transfer complete".to_string())
     }

@@ -10,11 +10,11 @@ pub struct DataPacket {
 }
 
 impl DataPacket {
-    pub fn new(job_id: u32, data: Vec<u8>) -> DataPacket {
+    pub fn new(job_id: u32, data: Vec<u8>, packet_number: u32) -> DataPacket {
         return DataPacket {
             packet_type: PacketType::Data,
             job_id,
-            packet_number: 0,
+            packet_number,
             data
         };
     }
@@ -57,11 +57,11 @@ mod tests {
 
     #[test]
     fn test_data_packet() {
-        let mut data_packet = DataPacket::new(0, vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+        let mut data_packet = DataPacket::new(0, vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 0);
         data_packet.packet_number = 99 as u32;
         let buffer = data_packet.to_buffer();
 
-        let mut data_packet2 = DataPacket::new(0, Vec::new());
+        let mut data_packet2 = DataPacket::new(0, Vec::new(), 0);
         data_packet2.fill_from_buffer(&buffer);
 
         assert_eq!(data_packet.job_id, data_packet2.job_id);

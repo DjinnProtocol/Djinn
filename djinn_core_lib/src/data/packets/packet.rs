@@ -25,7 +25,7 @@ pub fn deserialize_packet(buffer: &Vec<u8>) -> Box<dyn Packet> {
             Box::new(control_packet)
         },
         PacketType::Data => {
-            let mut data_packet = DataPacket::new(0, Vec::new());
+            let mut data_packet = DataPacket::new(0, Vec::new(), 0);
             data_packet.fill_from_buffer(buffer);
             Box::new(data_packet)
         }
@@ -40,7 +40,7 @@ mod tests {
 
     #[test]
     fn test_deserialize_control_packet() {
-        let buffer: Vec<u8> = DataPacket::new(0, vec![]).to_buffer();
+        let buffer: Vec<u8> = DataPacket::new(0, vec![], 0).to_buffer();
         let boxed_packet = deserialize_packet(&buffer);
         let packet_ref: &dyn Packet = boxed_packet.as_ref();
 
