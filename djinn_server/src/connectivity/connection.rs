@@ -57,20 +57,18 @@ impl Connection {
     pub async fn listen(&mut self) {
         // Handle incoming streams
         loop {
+            let mut reader = BufReader::new(&mut self.stream);
             let mut packet_reader = PacketReader::new();
-            let mut packets = vec![];
-            let amount_read = packet_reader.read(&mut self.stream, &mut packets).await;
+            let packet = packet_reader.read(&mut reader).await;
 
-            if amount_read == 0 {
+            if packet.is_none() {
                 // Connection closed
                 debug!("Connection closed");
                 break;
             }
 
-            for packet in packets {
-                let packet_handler = PacketHandler {};
-                packet_handler.handle_boxed_packet(packet, self).await;
-            }
+            let packet_handler = PacketHandler {};
+            packet_handler.handle_boxed_packet(packet.unwrap(), self).await;
         }
     }
 }

@@ -1,6 +1,6 @@
 use std::{collections::HashMap, error::Error};
 
-use async_std::{fs::File, io::WriteExt};
+use async_std::{fs::File, io::{WriteExt, BufReader}};
 use djinn_core_lib::data::packets::{packet::Packet, ControlPacket, ControlPacketType, PacketType, DataPacket, PacketReader};
 
 use crate::connectivity::Connection;
@@ -81,40 +81,29 @@ impl GetCommand {
         let mut file = File::create(self.file_path.clone()).await?;
 
         //Wait for the server to send the file
+        let mut reader = BufReader::new(connection.stream.as_mut().unwrap());
+        let mut packet_reader = PacketReader::new();
+
         loop {
-            let mut packet_reader = PacketReader::new();
-            let mut packets = vec![];
-            let amount_read = packet_reader.read(&mut connection.stream.as_mut().unwrap(), &mut packets).await;
+            let packet = packet_reader.read(&mut reader).await;
 
-            debug!("Received {} packets", amount_read);
-
-            if amount_read == 0 {
-                // Connection closed
+            if packet.is_none() {
                 debug!("Connection closed");
                 break;
             }
 
-            let mut last_packet_received = false;
+            let data_packet = packet.as_ref().unwrap()
+                .as_any()
+                .downcast_ref::<DataPacket>()
+                .unwrap();
 
-            for packet in packets {
-                let data_packet = packet
-                    .as_any()
-                    .downcast_ref::<DataPacket>()
-                    .unwrap();
+            debug!("Reveived: {:?}", String::from_utf8(data_packet.data.clone()));
 
-                // debug!("Reveived: {:?}", String::from_utf8(data_packet.data.clone()));
-
-                if data_packet.data.len() == 0 {
-                    last_packet_received = true;
-                    break;
-                }
-
-                file.write_all(&data_packet.data).await?;
-            }
-
-            if last_packet_received {
+            if data_packet.data.len() == 0 {
                 break;
             }
+
+            file.write_all(&data_packet.data).await?;
         }
 
         debug!("Transfer complete");

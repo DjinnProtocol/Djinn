@@ -1,6 +1,7 @@
 use async_std::{
     io::{BufReader, ReadExt},
     net::TcpStream,
+    path::Iter,
 };
 
 use crate::data::packets::packet::{deserialize_packet, get_packet_length};
@@ -8,74 +9,51 @@ use crate::data::packets::packet::{deserialize_packet, get_packet_length};
 use super::packet::Packet;
 
 pub struct PacketReader {
-    pre_buffer: Vec<u8>,
+    buffer: Vec<u8>,
+    byte_count: usize
 }
 
 impl PacketReader {
     pub fn new() -> PacketReader {
         return PacketReader {
-            pre_buffer: Vec::new(),
+            buffer: vec![0; 65536],
+            byte_count: 0
         };
     }
 
-    pub async fn read(
-        &mut self,
-        stream: &mut TcpStream,
-        packets: &mut Vec<Box<dyn Packet>>,
-    ) -> usize {
-        let mut packets_count = 0;
-        let mut reader = BufReader::new(stream);
-
+    pub async fn read(&mut self, reader: &mut BufReader<&mut TcpStream>) -> Option<Box<dyn Packet>> {
         loop {
-            let mut buffer = vec![0; 65535];
-            debug!("Listening for packets...");
-            let bytes_read = reader.read(&mut buffer).await.unwrap();
-            let mut filled_buffer = buffer[..bytes_read].to_vec();
-            // debug!("Buffer received: {:?}", String::from_utf8(filled_buffer.clone()));
+            let mut temp_buffer = vec![0; 65536];
+            let bytes_read = reader.read(&mut temp_buffer).await.unwrap();
 
             if bytes_read == 0 {
-                return packets_count;
+                return None;
             }
 
-            //Loop through possible packets
-            loop {
-                //Combine pre_buffer and buffer
-                let full_buffer = self
-                    .pre_buffer
-                    .clone()
-                    .into_iter()
-                    .chain(filled_buffer.to_vec().into_iter())
-                    .collect::<Vec<u8>>();
-                filled_buffer.clear();
-                //Get the length of the packet
-                let packet_length = get_packet_length(&full_buffer);
+            //Add to self buffer
+            for i in 0..bytes_read {
+                self.buffer[self.byte_count] = temp_buffer[i];
+                self.byte_count += 1;
+            }
 
-                if full_buffer.len() < packet_length.try_into().unwrap() {
-                    //Not enough data to read packet
-                    self.pre_buffer = full_buffer;
-                    break;
-                } else {
-                    //Read the packet
-                    let packet_buffer = full_buffer[..packet_length.try_into().unwrap()].to_vec();
+            //Check if packet is complete
+            let packet_length = get_packet_length(&self.buffer) as usize;
 
-                    //Deserialize the packet
-                    let boxed_packet = deserialize_packet(&packet_buffer);
-                    packets.push(boxed_packet);
-                    packets_count += 1;
+            if packet_length <= self.byte_count {
+                // Deserialize packet
+                let packet_vec = self.buffer[0..packet_length].to_vec();
+                let packet = deserialize_packet(&packet_vec);
 
-                    //Remove the packet from the buffer
-                    self.pre_buffer = full_buffer[packet_length.try_into().unwrap()..].to_vec();
-
-                    if self.pre_buffer.len() == 0 {
-                        break;
-                    }
+                //Remove packet from buffer
+                for i in 0..(self.byte_count - packet_length) {
+                    self.buffer[i] = self.buffer[i + packet_length];
                 }
-            }
 
-            if packets_count > 0 || self.pre_buffer.len() == 0 {
-                break;
+                //Update byte count
+                self.byte_count -= packet_length;
+
+                return Some(packet);
             }
         }
-        packets_count
     }
 }
