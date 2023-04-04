@@ -18,29 +18,27 @@ impl DataPacketGenerator {
 
     pub fn iter(&self) -> DataPacketGeneratorIterator {
         let file = File::open(self.path.clone()).unwrap();
-        let bytes_iterator = BufReader::new(file).bytes();
-        DataPacketGeneratorIterator::new(self.job_id, bytes_iterator)
+        let buf_reader = BufReader::new(file);
+        DataPacketGeneratorIterator::new(self.job_id, buf_reader)
     }
 }
 
 
 pub struct DataPacketGeneratorIterator {
     job_id: u32,
-    bytes_iterator: Bytes<BufReader<File>>,
+    buf_reader: BufReader<File>,
     buffer: Vec<u8>,
     packet_count: usize,
-    byte_count: usize,
     ended: bool,
 }
 
 impl DataPacketGeneratorIterator {
-    pub fn new(job_id: u32, bytes_iterator: Bytes<BufReader<File>>) -> Self {
+    pub fn new(job_id: u32, buf_reader: BufReader<File>) -> Self {
         DataPacketGeneratorIterator {
             job_id,
-            buffer: vec![0; 60000],
-            bytes_iterator,
+            buffer: Vec::with_capacity(60000),
+            buf_reader,
             packet_count: 0,
-            byte_count: 0,
             ended: false,
         }
     }
@@ -50,20 +48,25 @@ impl Iterator for DataPacketGeneratorIterator {
     type Item = DataPacket;
 
     fn next(&mut self) -> Option<Self::Item> {
-        while let Some(byte) = self.bytes_iterator.next() {
-            let byte = byte.unwrap();
-            self.buffer[self.byte_count] = byte;
+        while self.buffer.len() < 60000 {
+            let mut temp_buffer = [0; 60000];
+            let bytes_read = self.buf_reader.read(&mut temp_buffer).unwrap();
 
-            self.byte_count += 1;
-
-            if self.byte_count >= 60000 {
-                return self.generate_packet();
+            if bytes_read == 0 {
+                break;
             }
+
+            self.buffer.extend_from_slice(&temp_buffer[0..bytes_read]);
         }
 
-        // Send the last packet if there is one
-        if self.byte_count > 0 {
-            return self.generate_packet();
+        // Send packet if buffer is full
+        if self.buffer.len() > 0 {
+            let packet = self.generate_packet();
+
+            self.buffer.clear();
+            self.packet_count += 1;
+
+            return packet;
         }
 
         // Send end packet
@@ -84,11 +87,10 @@ impl DataPacketGeneratorIterator {
     fn generate_packet(&mut self) -> Option<DataPacket> {
         let packet = DataPacket::new(
             self.job_id,
-            self.buffer[0..self.byte_count].to_vec(),
+            self.buffer.clone(),
             (self.packet_count + 1) as u32,
         );
-        self.packet_count += 1;
-        self.byte_count = 0;
+
         return Some(packet);
     }
 }
@@ -120,8 +122,8 @@ mod tests {
         // Read file
         let file = File::open(file_path.clone()).unwrap();
 
-        let bytes_iterator = BufReader::new(file).bytes();
-        let mut data_packet_generator = DataPacketGeneratorIterator::new(1, bytes_iterator);
+        let buf_reader = BufReader::new(file);
+        let mut data_packet_generator = DataPacketGeneratorIterator::new(1, buf_reader);
 
         let mut packet_count = 0;
 
