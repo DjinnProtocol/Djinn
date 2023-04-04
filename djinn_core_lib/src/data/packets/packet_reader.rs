@@ -36,7 +36,8 @@ impl PacketReader {
             //Add to self buffer
             self.buffer.extend_from_slice(&temp_buffer[0..bytes_read]);
 
-            while self.buffer.len() > 0 {
+
+            while self.buffer.len() > 4 {
                 //Check if packet is complete
                 let packet_length = get_packet_length(&self.buffer) as usize;
 
