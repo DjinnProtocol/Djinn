@@ -2,7 +2,7 @@ use std::{collections::HashMap, error::Error};
 use async_std::fs::{self, File};
 
 
-use async_std::io::{WriteExt, BufReader, ReadExt};
+use async_std::io::{WriteExt, BufReader, ReadExt, BufWriter};
 use async_std::stream::StreamExt;
 use async_trait::async_trait;
 use djinn_core_lib::data::packets::{DataPacket, DataPacketGeneratorIterator, DataPacketGenerator};
@@ -46,15 +46,28 @@ impl ControlCommand for TransferStartCommand {
         // Open da file
         let packet_generator = DataPacketGenerator::new(job_id, full_path);
         let iterator = packet_generator.iter();
+        let mut writer = BufWriter::new(&mut connection.stream);
 
         for packet in iterator {
-            connection.stream.write(&packet.to_buffer()).await.unwrap();
-            // debug!("sent: {:?}", String::from_utf8(packet.data.clone()));
+            let buffer = &packet.to_buffer();
+            //Log first 4 bytes
+            // debug!("Packet length: {}", u32::from_be_bytes([buffer[0], buffer[1], buffer[2], buffer[3]]));
+            // debug!("Actual Length: {}", buffer.len());
 
+            let mut written_bytes = 0;
+
+            while written_bytes < buffer.len() {
+                let written = writer.write(&buffer[written_bytes..]).await?;
+                // debug!("Written: {}", written);
+                written_bytes += written;
+            }
+
+            // debug!("sent: {:?}", String::from_utf8(packet.data.clone()));
         }
 
-        connection.stream.flush().await?;
+        writer.flush().await?;
 
+        debug!("Done sending data");
         return Ok(());
     }
 }
