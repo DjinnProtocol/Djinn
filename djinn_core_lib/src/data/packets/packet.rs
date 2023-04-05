@@ -2,7 +2,7 @@ use std::{any::Any, collections::HashMap};
 
 use super::{PacketType, ControlPacket, DataPacket, ControlPacketType};
 
-pub trait Packet: Send + Sync {
+pub trait Packet: Sized + Clone + Send + Sync {
     fn fill_from_buffer(&mut self, buffer: &Vec<u8>);
     fn to_buffer(&self) -> Vec<u8>;
     fn get_packet_type(&self) -> PacketType;

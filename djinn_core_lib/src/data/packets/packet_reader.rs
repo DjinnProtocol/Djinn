@@ -19,7 +19,7 @@ impl PacketReader {
         };
     }
 
-    pub async fn read(&mut self, reader: &mut BufReader<&mut TcpStream>) -> Vec<Box<dyn Packet>> {
+    pub async fn read(&mut self, reader: &mut BufReader<&mut TcpStream>, max_packets: Option<usize>) -> Vec<Box<dyn Packet>> {
         let mut packets: Vec<Box<dyn Packet>> = Vec::with_capacity(10);
 
         while packets.len() == 0 {
@@ -30,17 +30,15 @@ impl PacketReader {
                 return packets;
             }
 
-            // let received = String::from_utf8(temp_buffer[0..bytes_read].to_vec()).unwrap();
-            // debug!("Reveived: {:?}", received);
-
             //Add to self buffer
             self.buffer.extend_from_slice(&temp_buffer[0..bytes_read]);
 
-
-            while self.buffer.len() > 4 {
+            //If buffer has more than 4 bytes and more packets need to be read
+            while self.buffer.len() > 4 && (max_packets.is_none() || packets.len() < max_packets.unwrap()) {
                 //Check if packet is complete
                 let packet_length = get_packet_length(&self.buffer) as usize;
 
+                //Check if packet can be extracted
                 if packet_length <= self.buffer.len() {
                     // Deserialize packet
                     let packet_vec = self.buffer[0..packet_length].to_vec();
@@ -49,6 +47,7 @@ impl PacketReader {
                     //Remove packet from buffer
                     self.buffer.drain(0..packet_length);
 
+                    //Add packet to packets
                     packets.push(packet);
                 } else {
                     break;

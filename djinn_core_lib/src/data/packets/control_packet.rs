@@ -10,6 +10,10 @@ pub enum ControlPacketType {
     TransferAck,
     TransferDeny,
     TransferStart,
+    SyncRequest,
+    SyncAck,
+    SyncDeny,
+    SyncIndexUpdate,
     None
 }
 
@@ -22,7 +26,11 @@ impl ControlPacketType {
             3 => ControlPacketType::TransferAck,
             4 => ControlPacketType::TransferDeny,
             5 => ControlPacketType::TransferStart,
-            6 => ControlPacketType::None,
+            6 => ControlPacketType::SyncRequest,
+            7 => ControlPacketType::SyncAck,
+            8 => ControlPacketType::SyncDeny,
+            9 => ControlPacketType::SyncIndexUpdate,
+            10 => ControlPacketType::None,
             _ => panic!("Invalid control packet type"),
         }
     }
@@ -47,6 +55,7 @@ impl TransferDenyReason {
     }
 }
 
+#[derive(Clone)]
 pub struct ControlPacket {
     pub packet_type: PacketType,
     pub control_packet_type: ControlPacketType,

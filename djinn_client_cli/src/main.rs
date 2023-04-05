@@ -29,6 +29,11 @@ async fn async_main() {
                 .about("Put a file on the host")
                 .arg(arg!( --file -f [FILE] "The file to put").required(true))
                 .arg(arg!( --destination -d [DISTINATION] "The destination").required(true)),
+        )
+        .subcommand(
+            Command::new("sync")
+                .about("Sync a directory")
+                .arg(arg!( --directory -d [DIRECTORY] "The directory to sync").required(true))
         );
 
     let matches = matches.get_matches();
@@ -61,6 +66,13 @@ async fn async_main() {
             let destination = destination_arg.to_owned();
             debug!("Destination: {}", destination);
             // djinn_client.put(file, destination).await;
+        }
+        Some(("sync", matches)) => {
+            debug!("Sync command called");
+            let directory_arg = matches.get_one::<String>("directory").unwrap();
+            let directory = directory_arg.to_owned();
+            debug!("Directory: {}", directory);
+            djinn_client.syncInternal(directory).await;
         }
         _ => unreachable!(),
     }

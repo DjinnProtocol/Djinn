@@ -4,6 +4,7 @@ use async_std::io::BufReader;
 use async_std::io::ReadExt;
 use async_std::io::WriteExt;
 use async_std::net::TcpStream;
+use djinn_core_lib::data::packets::PacketReader;
 use djinn_core_lib::data::packets::packet::Packet;
 use djinn_core_lib::data::packets::packet::deserialize_packet;
 use async_std::io::prelude::BufReadExt;
@@ -13,6 +14,7 @@ pub struct Connection {
     pub active: bool,
     pub host: String,
     pub port: usize,
+    pub packet_reader: PacketReader,
 }
 
 impl Connection {
@@ -22,6 +24,7 @@ impl Connection {
             active: false,
             host,
             port,
+            packet_reader: PacketReader::new(),
         }
     }
 
@@ -50,7 +53,13 @@ impl Connection {
             // Convert packet to buffer
             let buffer = packet.to_buffer();
             // Write buffer to stream
-            self.stream.as_mut().unwrap().write(&buffer).await?;
+            let mut total_bytes_written = 0;
+
+            while total_bytes_written < buffer.len() {
+                let bytes_written = self.stream.as_mut().unwrap().write(&buffer).await?;
+                total_bytes_written += bytes_written;
+            }
+
         } else {
             return Err(Box::new(std::io::Error::new(
                 std::io::ErrorKind::Other,
@@ -62,25 +71,18 @@ impl Connection {
 
     pub async fn read_next_packet(&mut self) -> Result<Box<dyn Packet>, Box<dyn Error>> {
         if self.stream.is_some() {
-            let mut buffer = vec![0; 65535];
             let stream = self.stream.as_mut().unwrap();
-            debug!("Waiting for packet...");
-
             let mut reader = BufReader::new(stream);
-            let bytes_read = reader.read(&mut buffer).await?;
-            let received_buffer = buffer[..bytes_read].to_vec();
+            let packets = self.packet_reader.read(&mut reader, Some(1)).await;
 
-            // debug!("Reveived: {:?}", String::from_utf8(received_buffer.clone()));
-
-            if received_buffer.len() == 0 {
+            if packets.is_empty() {
                 return Err(Box::new(std::io::Error::new(
                     std::io::ErrorKind::Other,
-                    "Stream disconnected",
+                    "Connection closed",
                 )));
             }
-            // Convert buffer to packet
-            let boxed_packet = deserialize_packet(&received_buffer);
-            Ok(boxed_packet)
+
+            Ok(packets[0].clone())
         } else {
             return Err(Box::new(std::io::Error::new(
                 std::io::ErrorKind::Other,

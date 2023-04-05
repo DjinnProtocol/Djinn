@@ -86,7 +86,7 @@ impl GetCommand {
         let mut last_packet_received = false;
 
         while !last_packet_received {
-            let packets = packet_reader.read(&mut reader).await;
+            let packets = packet_reader.read(&mut reader, None).await;
 
             if packets.len() == 0 {
                 debug!("Connection closed");

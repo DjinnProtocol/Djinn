@@ -2,6 +2,8 @@ use std::{collections::HashMap, any::Any};
 
 use super::{PacketType, packet::Packet};
 
+
+#[derive(Clone)]
 pub struct DataPacket {
     pub packet_type: PacketType,
     pub job_id: u32,

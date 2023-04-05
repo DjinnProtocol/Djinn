@@ -59,7 +59,7 @@ impl Connection {
         loop {
             let mut reader = BufReader::new(&mut self.stream);
             let mut packet_reader = PacketReader::new();
-            let packets = packet_reader.read(&mut reader).await;
+            let packets = packet_reader.read(&mut reader, None).await;
 
             if packets.len() == 0 {
                 // Connection closed
