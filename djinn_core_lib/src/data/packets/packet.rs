@@ -1,8 +1,10 @@
 use std::{any::Any, collections::HashMap};
 
+use crate::data;
+
 use super::{PacketType, ControlPacket, DataPacket, ControlPacketType};
 
-pub trait Packet: Sized + Clone + Send + Sync {
+pub trait Packet: Send + Sync {
     fn fill_from_buffer(&mut self, buffer: &Vec<u8>);
     fn to_buffer(&self) -> Vec<u8>;
     fn get_packet_type(&self) -> PacketType;
@@ -12,6 +14,23 @@ pub trait Packet: Sized + Clone + Send + Sync {
 
 pub fn get_packet_length(buffer: &Vec<u8>) -> u32 {
     return u32::from_be_bytes([buffer[0], buffer[1], buffer[2], buffer[3]]);
+}
+
+pub fn duplicate_packet(packet: &Box<dyn Packet>) -> Box<dyn Packet> {
+    let packet_type = packet.get_packet_type();
+
+    let temporary_packet: Box<dyn Packet> = match packet_type {
+        PacketType::Control => {
+            let control_packet = packet.as_any().downcast_ref::<ControlPacket>().unwrap();
+            Box::new(ControlPacket::new(control_packet.control_packet_type, control_packet.params.clone()))
+        },
+        PacketType::Data => {
+            let data_packet = packet.as_any().downcast_ref::<DataPacket>().unwrap();
+            Box::new(DataPacket::new(data_packet.job_id, data_packet.data.clone(), data_packet.packet_number))
+        }
+    };
+
+    return temporary_packet;
 }
 
 pub fn deserialize_packet(buffer: &Vec<u8>) -> Box<dyn Packet> {

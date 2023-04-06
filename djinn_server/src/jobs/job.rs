@@ -2,7 +2,8 @@ use std::collections::HashMap;
 
 #[derive(Clone)]
 pub enum JobType {
-    Transfer
+    Transfer,
+    Sync
 }
 
 #[derive(Clone)]

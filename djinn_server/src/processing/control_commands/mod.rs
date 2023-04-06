@@ -6,3 +6,7 @@ mod transfer_request;
 pub use transfer_request::TransferRequestCommand;
 mod transfer_start;
 pub use transfer_start::TransferStartCommand;
+mod sync_request;
+pub use sync_request::SyncRequestCommand;
+mod sync_index_response;
+pub use sync_index_response::SyncIndexResponseCommand;

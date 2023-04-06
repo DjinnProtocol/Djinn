@@ -3,16 +3,16 @@ use async_std::fs;
 
 use async_std::io::WriteExt;
 use async_trait::async_trait;
-use djinn_core_lib::data::packets::{ControlPacket, PacketType, ControlPacketType, packet::Packet, TransferDenyReason};
+use djinn_core_lib::data::packets::{ControlPacket, ControlPacketType, packet::Packet, TransferDenyReason};
 
 use crate::{connectivity::Connection, CONFIG, jobs::{Job, JobType, JobStatus}};
 
 use super::ControlCommand;
 
-pub struct TransferRequestCommand {}
+pub struct SyncRequestCommand {}
 
 #[async_trait]
-impl ControlCommand for TransferRequestCommand {
+impl ControlCommand for SyncRequestCommand {
     async fn execute(&self, connection: &mut Connection, packet: &ControlPacket) -> Result<(), Box<dyn Error>> {
         let path = packet.params.get("file_path").unwrap();
         let full_path = CONFIG.serving_directory.clone().unwrap() + "/" + path;
@@ -23,7 +23,7 @@ impl ControlCommand for TransferRequestCommand {
             let mut params = HashMap::new();
             params.insert("reason".to_string(), TransferDenyReason::FileNotFound.to_string());
 
-            let response = ControlPacket::new(ControlPacketType::TransferDeny, params);
+            let response = ControlPacket::new(ControlPacketType::SyncDeny, params);
             connection.stream.write(&response.to_buffer()).await.unwrap();
 
             return Ok(());
@@ -32,7 +32,7 @@ impl ControlCommand for TransferRequestCommand {
         //Create job
         let job = Job {
             id: connection.new_job_id(),
-            job_type: JobType::Transfer,
+            job_type: JobType::Sync,
             status: JobStatus::Pending,
             params: packet.params.clone()
         };
@@ -40,17 +40,9 @@ impl ControlCommand for TransferRequestCommand {
         connection.jobs.push(job.clone());
 
         //Send response
-        let mut response = ControlPacket::new(ControlPacketType::TransferAck, HashMap::new());
+        let mut response = ControlPacket::new(ControlPacketType::SyncAck, HashMap::new());
         response.params.insert("job_id".to_string(), job.id.to_string());
         connection.stream.write(&response.to_buffer()).await.unwrap();
-
-        //Also send index request packet
-        let mut index_request_params = HashMap::new();
-        index_request_params.insert("job_id".to_string(), job.id.to_string());
-        let index_request_packet = ControlPacket::new(ControlPacketType::SyncIndexRequest, HashMap::new());
-
-        connection.stream.write(&index_request_packet.to_buffer()).await.unwrap();
-
 
         return Ok(());
     }

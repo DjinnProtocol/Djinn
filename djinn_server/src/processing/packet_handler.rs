@@ -2,7 +2,7 @@ use djinn_core_lib::data::packets::{packet::{Packet, self}, PacketType, ControlP
 
 use crate::connectivity::Connection;
 
-use super::control_commands::{EchoRequestCommand, ControlCommand, TransferRequestCommand, TransferStartCommand};
+use super::control_commands::{EchoRequestCommand, ControlCommand, TransferRequestCommand, TransferStartCommand, SyncIndexResponseCommand};
 
 
 
@@ -41,9 +41,17 @@ impl PacketHandler {
             ControlPacketType::TransferAck => {
                 //Transfer reverse for server -> client
             },
+            ControlPacketType::SyncIndexResponse => {
+                let command = SyncIndexResponseCommand {};
+                command.execute(connection, packet).await.unwrap();
+            },
             ControlPacketType::TransferStart => {
                 let command = TransferStartCommand {};
                 command.execute(connection, packet).await.unwrap();
+            },
+            ControlPacketType::SyncRequest => {
+                // Throw error
+                panic!("Syncing is not supported yet")
             },
             _ => {
                 // Throw error

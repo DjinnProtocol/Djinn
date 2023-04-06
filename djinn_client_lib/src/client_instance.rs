@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use crate::{connectivity::Connection, commands::{EchoCommand, GetCommand, SyncCommand}, syncing::SyncHandler};
+use crate::{connectivity::Connection, commands::{EchoCommand, GetCommand}, syncing::SyncHandler};
 
 pub struct ClientInstance {
   connection: Connection,

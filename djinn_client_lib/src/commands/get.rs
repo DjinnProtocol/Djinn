@@ -81,7 +81,8 @@ impl GetCommand {
         let mut file = File::create(self.file_path.clone()).await?;
 
         //Wait for the server to send the file
-        let mut reader = BufReader::new(connection.stream.as_mut().unwrap());
+        let mut stream = connection.stream.lock().await;
+        let mut reader = BufReader::new(stream.as_mut().unwrap());
         let mut packet_reader = PacketReader::new();
         let mut last_packet_received = false;
 
