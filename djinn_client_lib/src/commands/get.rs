@@ -27,7 +27,7 @@ impl GetCommand {
         debug!("Sent transfer request");
 
         //Wait for the server to acknowledge the request
-        let response_packet = connection.read_next_packet().await?;
+        let response_packet = connection.read_next_packet().await?.unwrap();
 
         debug!("Received transfer ack");
 

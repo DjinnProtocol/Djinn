@@ -28,7 +28,7 @@ impl PutCommand {
         debug!("Sent transfer request");
 
         //Wait for the server to acknowledge the request
-        let response_packet = connection.read_next_packet().await?;
+        let response_packet = connection.read_next_packet().await?.unwrap();
 
         debug!("Received transfer ack");
 
@@ -73,7 +73,7 @@ impl PutCommand {
         let mut file = File::create(self.file_path.clone()).await?;
 
         //Send file parts
-        
+
 
 
         Ok("Transfer complete".to_string())

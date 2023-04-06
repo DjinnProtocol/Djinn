@@ -32,8 +32,8 @@ impl ClientInstance {
     // command.execute(&mut self.connection).await.expect("AAA");
   }
 
-  pub async fn syncInternal(&mut self, directory: String) {
-    let handler = SyncHandler::new(directory);
+  pub async fn sync_internal(&mut self, path: String, target: String) {
+    let mut handler = SyncHandler::new(path, target);
     handler.start(&mut self.connection).await.expect("AAA");
   }
 

@@ -1,3 +1,5 @@
+use std::error::Error;
+
 use crate::{jobs::Job, processing::PacketHandler};
 use async_std::{
     io::{prelude::BufReadExt, BufReader, ReadExt, WriteExt},
@@ -26,17 +28,6 @@ impl Connection {
             jobs: vec![],
             new_job_id: 0,
         }
-    }
-
-    pub async fn send_packet(
-        &mut self,
-        packet: impl Packet,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        let buffer = packet.to_buffer();
-
-        self.stream.write_all(&buffer).await.unwrap();
-
-        Ok(())
     }
 
     pub fn new_job_id(&mut self) -> u32 {
@@ -72,5 +63,21 @@ impl Connection {
                 packet_handler.handle_boxed_packet(packet, self).await;
             }
         }
+    }
+
+    pub async fn send_packet(&mut self, packet: impl Packet) -> Result<(), Box<dyn Error>> {
+        // Convert packet to buffer
+        let buffer = packet.to_buffer();
+        // Write buffer to stream
+        let mut total_bytes_written = 0;
+
+        while total_bytes_written < buffer.len() {
+            let bytes_written = self.stream.write(&buffer[total_bytes_written..]).await?;
+            total_bytes_written += bytes_written;
+        }
+
+        debug!("Sent bytes: {}", total_bytes_written);
+
+        Ok(())
     }
 }

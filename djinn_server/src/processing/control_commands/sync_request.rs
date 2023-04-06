@@ -14,7 +14,7 @@ pub struct SyncRequestCommand {}
 #[async_trait]
 impl ControlCommand for SyncRequestCommand {
     async fn execute(&self, connection: &mut Connection, packet: &ControlPacket) -> Result<(), Box<dyn Error>> {
-        let path = packet.params.get("file_path").unwrap();
+        let path = packet.params.get("path").unwrap();
         let full_path = CONFIG.serving_directory.clone().unwrap() + "/" + path;
 
 
@@ -42,7 +42,17 @@ impl ControlCommand for SyncRequestCommand {
         //Send response
         let mut response = ControlPacket::new(ControlPacketType::SyncAck, HashMap::new());
         response.params.insert("job_id".to_string(), job.id.to_string());
-        connection.stream.write(&response.to_buffer()).await.unwrap();
+
+        connection.send_packet(response).await?;
+
+        //Also send index request packet
+        let mut index_request_packet = ControlPacket::new(ControlPacketType::SyncIndexRequest, HashMap::new());
+        index_request_packet.job_id = Some(job.id);
+        connection.send_packet(index_request_packet).await?;
+
+        connection.stream.flush().await.unwrap();
+
+        debug!("Sent index request packet for sync job {}", job.id);
 
         return Ok(());
     }

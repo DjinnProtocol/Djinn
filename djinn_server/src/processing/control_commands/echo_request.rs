@@ -22,7 +22,7 @@ impl ControlCommand for EchoRequestCommand {
 
         debug!("Sending echo reply");
 
-        connection.stream.write(&response.to_buffer()).await.unwrap();
+        connection.send_packet(response).await?;
         Ok(())
     }
 }

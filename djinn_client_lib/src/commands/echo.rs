@@ -22,7 +22,7 @@ impl EchoCommand {
         debug!("Sent echo request");
 
         // Wait for response
-        let response_packet = connection.read_next_packet().await?;
+        let response_packet = connection.read_next_packet().await?.unwrap();
 
         debug!("Received echo response");
 

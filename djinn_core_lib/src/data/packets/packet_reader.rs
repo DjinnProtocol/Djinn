@@ -26,6 +26,8 @@ impl PacketReader {
             let mut temp_buffer = [0; 65536];
             let bytes_read = reader.read(&mut temp_buffer).await.unwrap();
 
+            debug!("Bytes read: {}", bytes_read);
+
             if bytes_read == 0 {
                 return packets;
             }

@@ -11,6 +11,11 @@ fn main() {
 }
 
 async fn async_main() {
+    let mut djinn_client = DjinnClient::new("127.0.0.1".to_string(), 7777).await.unwrap();
+
+    return djinn_client.sync_internal("/".to_string(), "./files".to_string()).await;
+
+
     let matches = Command::new("djinn")
         .about("Djinn client CLI")
         .subcommand_required(true)
@@ -33,7 +38,8 @@ async fn async_main() {
         .subcommand(
             Command::new("sync")
                 .about("Sync a directory")
-                .arg(arg!( --directory -d [DIRECTORY] "The directory to sync").required(true))
+                .arg(arg!( --path -p [PATH] "The path to sync").required(true))
+                .arg(arg!( --target -t [TARGET] "The target to sync to").required(true)),
         );
 
     let matches = matches.get_matches();
@@ -44,7 +50,9 @@ async fn async_main() {
     let port_arg = matches.get_one::<String>("port").unwrap();
     let port = port_arg.to_owned().parse::<usize>().unwrap();
 
-    let mut djinn_client = DjinnClient::new(host, port).await.unwrap();
+    let mut djinn_client = DjinnClient::new("127.0.0.1".to_string(), 7777).await.unwrap();
+
+    djinn_client.sync_internal("/".to_string(), "./files".to_string()).await;
 
     match matches.subcommand() {
         Some(("echo", _matches)) => {
@@ -69,10 +77,13 @@ async fn async_main() {
         }
         Some(("sync", matches)) => {
             debug!("Sync command called");
-            let directory_arg = matches.get_one::<String>("directory").unwrap();
-            let directory = directory_arg.to_owned();
-            debug!("Directory: {}", directory);
-            djinn_client.syncInternal(directory).await;
+            let path_arg = matches.get_one::<String>("path").unwrap();
+            let path = path_arg.to_owned();
+            debug!("Path: {}", path);
+            let target_arg = matches.get_one::<String>("target").unwrap();
+            let target = target_arg.to_owned();
+
+            djinn_client.sync_internal(path, target).await;
         }
         _ => unreachable!(),
     }

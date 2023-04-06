@@ -32,9 +32,11 @@ impl ControlPacketType {
             6 => ControlPacketType::SyncRequest,
             7 => ControlPacketType::SyncAck,
             8 => ControlPacketType::SyncDeny,
-            9 => ControlPacketType::SyncIndexRequest,
-            10 => ControlPacketType::SyncIndexUpdate,
-            11 => ControlPacketType::None,
+            9 => ControlPacketType::SyncUpdate,
+            10 => ControlPacketType::SyncIndexRequest,
+            11 => ControlPacketType::SyncIndexResponse,
+            12 => ControlPacketType::SyncIndexUpdate,
+            13 => ControlPacketType::None,
             _ => panic!("Invalid control packet type"),
         }
     }

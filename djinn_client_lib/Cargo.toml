@@ -11,3 +11,4 @@ async-trait = "0.1.66"
 djinn_core_lib = { path = "../djinn_core_lib" }
 futures = "0.3.27"
 log = "0.4.17"
+tokio = "1.27.0"

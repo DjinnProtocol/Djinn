@@ -1,19 +1,24 @@
 use std::{error::Error, collections::HashMap};
 
-use djinn_core_lib::data::packets::{ControlPacketType, ControlPacket, PacketType, packet::Packet};
+use async_std::task;
+use djinn_core_lib::data::{packets::{ControlPacketType, ControlPacket, PacketType, packet::Packet}, syncing::IndexManager};
 
 use crate::connectivity::Connection;
 
 pub struct SyncHandler {
-    pub directory: String,
-    pub job_id: Option<u32>
+    pub path: String,
+    pub target: String,
+    pub job_id: Option<u32>,
+    pub polling_ready: bool
 }
 
 impl SyncHandler {
-    pub fn new(directory: String) -> SyncHandler {
+    pub fn new(path: String, target: String) -> SyncHandler {
         SyncHandler {
-            directory,
-            job_id: None
+            path,
+            target,
+            job_id: None,
+            polling_ready: false
         }
     }
 
@@ -22,14 +27,14 @@ impl SyncHandler {
         debug!("Sending sync request");
 
         let mut params = HashMap::new();
-        params.insert("directory".to_string(), self.directory.clone());
+        params.insert("path".to_string(), self.path.clone());
 
         let packet = ControlPacket::new(ControlPacketType::SyncRequest, params);
         connection.send_packet(packet).await?;
 
         //Wait for the server to send the ack
         debug!("Waiting for sync ack");
-        let boxed_packet = connection.read_next_packet().await?;
+        let boxed_packet = connection.read_next_packet().await?.unwrap();
 
         if !matches!(boxed_packet.get_packet_type(), PacketType::Control) {
             return Err(Box::new(std::io::Error::new(
@@ -73,7 +78,13 @@ impl SyncHandler {
 
         //Start listening to the server for updates and commands
         debug!("Starting to listen for updates");
-        self.listen(connection).await?;
+
+        task::spawn (async move {
+            self.poll_file_changes(&connection).await;
+        });
+
+        self.listen(&mut connection).await?;
+
 
         Ok(())
 
@@ -81,27 +92,20 @@ impl SyncHandler {
 
     async fn listen(&self, connection: &mut Connection) -> Result<(), Box<dyn Error>> {
         loop {
-            let boxed_packet = connection.read_next_packet().await?;
+            let possible_boxed_packet = connection.read_next_packet().await?;
 
-            if !matches!(boxed_packet.get_packet_type(), PacketType::Control) {
-                return Err(Box::new(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    "Unexpected packet type",
-                )));
+            if possible_boxed_packet.is_none() {
+                break;
             }
 
-            let control_packet = boxed_packet
-                .as_any()
-                .downcast_ref::<ControlPacket>()
-                .unwrap();
-
-            break;
+            let boxed_packet = possible_boxed_packet.unwrap();
+            self.handle_boxed_packet(boxed_packet, connection).await;
         }
 
         Ok(())
     }
 
-    pub async fn handle_boxed_packet<'a>(&self, boxed_packet: Box<dyn Packet + 'a>, connection: &mut Connection) {
+    pub async fn handle_boxed_packet<'a>(&self, boxed_packet: Box<dyn Packet + 'a>, connection: &Connection) {
         let packet_ref: &dyn Packet = boxed_packet.as_ref();
 
         match packet_ref.get_packet_type() {
@@ -118,15 +122,17 @@ impl SyncHandler {
         }
     }
 
-    pub async fn handle_control_packet(&self, packet: &ControlPacket, connection: &mut Connection) {
+    pub async fn handle_control_packet(&self, packet: &ControlPacket, connection: &Connection) {
         match packet.control_packet_type {
             ControlPacketType::SyncIndexRequest => {
                 info!("Sync index request received");
 
-                connection.index_manager.build(self.directory.clone()).await;
+                let full_path = format!("{}/{}", self.target, self.path);
+                let mut index_manager = IndexManager::new(full_path);
+                index_manager.build().await;
 
                 let mut params = HashMap::new();
-                let index = &connection.index_manager.index;
+                let index = index_manager.index;
 
                 //Stringify the timestamps
                 for (key, value) in index.iter() {
@@ -139,11 +145,41 @@ impl SyncHandler {
 
                 connection.send_packet(packet).await.unwrap();
             },
+            ControlPacketType::SyncUpdate => {
+                info!("Sync update received");
+            },
             _ => {
+                //Log type
+                debug!("Unknown control packet type: {:?}", packet.control_packet_type as u8);
                 // Throw error
                 panic!("Unknown control packet type")
             }
         }
     }
 
+    pub async fn poll_file_changes(&self, connection: &Connection) -> Result<(), Box<dyn Error>> {
+        let mut index_manager = IndexManager::new(self.target.clone());
+
+        loop {
+            index_manager.build().await;
+
+            let mut params = HashMap::new();
+            let index = &index_manager.index;
+
+            //Stringify the timestamps
+            for (key, value) in index.iter() {
+                params.insert(key.clone(), value.to_string());
+            }
+
+            let mut packet = ControlPacket::new(ControlPacketType::SyncUpdate, params);
+
+            packet.job_id = self.job_id;
+
+            connection.send_packet(packet).await.unwrap();
+
+            task::sleep(std::time::Duration::from_secs(1)).await;
+        }
+
+        Ok(())
+    }
 }

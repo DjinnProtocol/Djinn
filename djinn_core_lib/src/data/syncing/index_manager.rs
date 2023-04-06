@@ -31,8 +31,8 @@ impl IndexManager {
         }
     }
 
-    pub async fn build(&mut self, directory_path: String) {
-        self.index = self.build_index(directory_path).await;
+    pub async fn build(&mut self) {
+        self.index = self.build_index(self.root.clone()).await;
     }
 
     #[async_recursion]
@@ -89,7 +89,7 @@ mod tests {
 
         //Test
         let mut index_manager = IndexManager::new(test_dir.to_string());
-        index_manager.build(test_dir.to_string()).await;
+        index_manager.build().await;
         //Check if the index is correct
         let mut expected_index = HashMap::new();
         let current_unix = SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() as usize;

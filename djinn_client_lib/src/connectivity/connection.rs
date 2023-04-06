@@ -18,8 +18,7 @@ pub struct Connection {
     pub active: bool,
     pub host: String,
     pub port: usize,
-    pub packet_reader: PacketReader,
-    pub index_manager: IndexManager
+    pub packet_reader: PacketReader
 }
 
 impl Connection {
@@ -29,8 +28,7 @@ impl Connection {
             active: false,
             host,
             port,
-            packet_reader: PacketReader::new(),
-            index_manager: IndexManager::new()
+            packet_reader: PacketReader::new()
         }
     }
 
@@ -59,7 +57,7 @@ impl Connection {
         Ok(())
     }
 
-    pub async fn send_packet(&mut self, packet: impl Packet) -> Result<(), Box<dyn Error>> {
+    pub async fn send_packet(&self, packet: impl Packet) -> Result<(), Box<dyn Error>> {
         let mut stream = self.stream.lock().await;
         if stream.is_some() {
             // Convert packet to buffer
@@ -81,21 +79,23 @@ impl Connection {
         Ok(())
     }
 
-    pub async fn read_next_packet(&mut self) -> Result<Box<dyn Packet>, Box<dyn Error>> {
+    pub async fn read_next_packet(&mut self) -> Result<Option<Box<dyn Packet>>, Box<dyn Error>> {
+        debug!("Waiting for lock");
         let mut stream = self.stream.lock().await;
+        debug!("Lock acquired");
+
         if stream.is_some() {
             let stream = stream.as_mut().unwrap();
             let mut reader = BufReader::new(stream);
+            debug!("Waiting for packet");
             let packets = self.packet_reader.read(&mut reader, Some(1)).await;
+            debug!("Packet received");
 
             if packets.is_empty() {
-                return Err(Box::new(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    "Connection closed",
-                )));
+                return Ok(None);
             }
 
-            Ok(duplicate_packet(&packets[0]))
+            return Ok(Some(duplicate_packet(&packets[0])));
         } else {
             return Err(Box::new(std::io::Error::new(
                 std::io::ErrorKind::Other,

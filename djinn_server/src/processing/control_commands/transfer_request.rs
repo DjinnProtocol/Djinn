@@ -24,7 +24,8 @@ impl ControlCommand for TransferRequestCommand {
             params.insert("reason".to_string(), TransferDenyReason::FileNotFound.to_string());
 
             let response = ControlPacket::new(ControlPacketType::TransferDeny, params);
-            connection.stream.write(&response.to_buffer()).await.unwrap();
+
+            connection.send_packet(response).await?;
 
             return Ok(());
         }
@@ -42,15 +43,10 @@ impl ControlCommand for TransferRequestCommand {
         //Send response
         let mut response = ControlPacket::new(ControlPacketType::TransferAck, HashMap::new());
         response.params.insert("job_id".to_string(), job.id.to_string());
-        connection.stream.write(&response.to_buffer()).await.unwrap();
 
-        //Also send index request packet
-        let mut index_request_params = HashMap::new();
-        index_request_params.insert("job_id".to_string(), job.id.to_string());
-        let index_request_packet = ControlPacket::new(ControlPacketType::SyncIndexRequest, HashMap::new());
+        connection.send_packet(response).await?;
 
-        connection.stream.write(&index_request_packet.to_buffer()).await.unwrap();
-
+        connection.stream.flush().await.unwrap();
 
         return Ok(());
     }
