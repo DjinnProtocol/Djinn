@@ -11,9 +11,9 @@ fn main() {
 }
 
 async fn async_main() {
-    let mut djinn_client = DjinnClient::new("127.0.0.1".to_string(), 7777).await.unwrap();
+    // let mut djinn_client = DjinnClient::new("127.0.0.1".to_string(), 7777).await.unwrap();
 
-    return djinn_client.sync_internal("/".to_string(), "./files".to_string()).await;
+    // return djinn_client.sync_internal("/".to_string(), "./files".to_string()).await;
 
 
     let matches = Command::new("djinn")
@@ -50,9 +50,7 @@ async fn async_main() {
     let port_arg = matches.get_one::<String>("port").unwrap();
     let port = port_arg.to_owned().parse::<usize>().unwrap();
 
-    let mut djinn_client = DjinnClient::new("127.0.0.1".to_string(), 7777).await.unwrap();
-
-    djinn_client.sync_internal("/".to_string(), "./files".to_string()).await;
+    let mut djinn_client = DjinnClient::new(host, port).await.unwrap();
 
     match matches.subcommand() {
         Some(("echo", _matches)) => {

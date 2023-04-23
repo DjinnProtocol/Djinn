@@ -3,7 +3,7 @@ use std::{error::Error, collections::HashMap};
 use async_std::task;
 use djinn_core_lib::data::{packets::{ControlPacketType, ControlPacket, PacketType, packet::Packet}, syncing::IndexManager};
 
-use crate::connectivity::Connection;
+use crate::{connectivity::Connection, syncing::fs_poller::FsPoller};
 
 pub struct SyncHandler {
     pub path: String,
@@ -79,11 +79,19 @@ impl SyncHandler {
         //Start listening to the server for updates and commands
         debug!("Starting to listen for updates");
 
+        let new_target = self.target.clone();
+
+        let new_job_id = self.job_id.unwrap();
+
+        let stream = connection.stream.lock().await;
+        let cloned_stream = stream.as_mut().unwrap().try_clone().unwrap();
+
         task::spawn (async move {
-            self.poll_file_changes(&connection).await;
+            let mut fs_poller = FsPoller::new(new_target, new_job_id);
+            fs_poller.poll(stream).await.unwrap();
         });
 
-        self.listen(&mut connection).await?;
+        self.listen(connection).await?;
 
 
         Ok(())
@@ -127,7 +135,7 @@ impl SyncHandler {
             ControlPacketType::SyncIndexRequest => {
                 info!("Sync index request received");
 
-                let full_path = format!("{}/{}", self.target, self.path);
+                let full_path = self.target.clone();
                 let mut index_manager = IndexManager::new(full_path);
                 index_manager.build().await;
 

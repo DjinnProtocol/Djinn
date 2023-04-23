@@ -79,6 +79,19 @@ impl Connection {
         Ok(())
     }
 
+    pub async fn flush(&self) -> Result<(), Box<dyn Error>> {
+        let mut stream = self.stream.lock().await;
+        if stream.is_some() {
+            stream.as_mut().unwrap().flush().await?;
+        } else {
+            return Err(Box::new(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Stream is not connected",
+            )));
+        }
+        Ok(())
+    }
+
     pub async fn read_next_packet(&mut self) -> Result<Option<Box<dyn Packet>>, Box<dyn Error>> {
         debug!("Waiting for lock");
         let mut stream = self.stream.lock().await;

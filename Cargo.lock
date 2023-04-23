@@ -272,6 +272,7 @@ dependencies = [
  "djinn_core_lib",
  "futures",
  "log",
+ "tokio",
 ]
 
 [[package]]
