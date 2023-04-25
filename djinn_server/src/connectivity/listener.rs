@@ -1,4 +1,4 @@
-use async_std::net::{TcpListener, TcpStream};
+use tokio::net::{TcpListener, TcpStream};
 use crate::{threads::ThreadPool, CONFIG};
 
 pub struct Listener {
@@ -24,7 +24,10 @@ impl Listener {
         }
     }
 
-    async fn handle_new_connection(&mut self, socket: TcpStream) {
-        self.thread_pool.distribute_stream(socket).await;
+    async fn handle_new_connection(&mut self, stream: TcpStream) {
+        tokio::spawn(async move {
+            let mut connection = Connection::new(stream);
+            connection.listen().await;
+        });
     }
 }

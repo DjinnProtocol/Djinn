@@ -299,6 +299,7 @@ dependencies = [
  "pretty_env_logger",
  "serde",
  "serde_yaml",
+ "tokio",
  "uuid",
 ]
 

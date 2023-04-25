@@ -13,17 +13,15 @@ use uuid::Uuid;
 
 pub struct Connection {
     pub stream: TcpStream,
-    pub thread_id: usize,
     pub uuid: Uuid,
     pub jobs: Vec<Job>,
     pub new_job_id: u32,
 }
 
 impl Connection {
-    pub fn new(stream: TcpStream, thread_id: usize) -> Connection {
+    pub fn new(stream: TcpStream) -> Connection {
         Connection {
             stream,
-            thread_id,
             uuid: Uuid::new_v4(),
             jobs: vec![],
             new_job_id: 0,

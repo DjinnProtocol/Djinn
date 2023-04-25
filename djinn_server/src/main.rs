@@ -1,7 +1,6 @@
 extern crate pretty_env_logger;
 use configuration::application_config::ApplicationConfig;
 use connectivity::Listener;
-use futures::executor::block_on;
 use lazy_static::lazy_static;
 
 mod threads;
@@ -19,12 +18,8 @@ lazy_static! {
 }
 
 
-fn main() {
-    pretty_env_logger::init();
-    block_on(async_main())
-}
-
-async fn async_main(){
+#[tokio::main]
+async fn main(){
     let mut listener = Listener::new();
     listener.listen_for_connections().await;
 }
