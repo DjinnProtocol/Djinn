@@ -14,9 +14,9 @@ jobs:
       - uses: actions/checkout@v2
       # Build docker image
       - name: Build Docker image
-        run: docker build -f djinn_server/Dockerfile -t nykaworks/djinn_server:${{ github.sha }} .
+        run: docker build -f djinn_server/Dockerfile -t registry.nykaworks.com/djinn_server:${{ github.sha }} .
       # Push image to private registry by logging in to the registry
       - name: Push Docker image
         run: |
           docker login registry.nykaworks.com -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
-          docker push nykaworks/djinn_server:${{ github.sha }}
+          docker push registry.nykaworks.com/djinn_server:${{ github.sha }}
