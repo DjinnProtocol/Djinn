@@ -18,5 +18,5 @@ jobs:
       # Push image to private registry by logging in to the registry
       - name: Push Docker image
         run: |
-          docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+          docker login registry.nykaworks.com -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
           docker push nykaworks/djinn_server:${{ github.sha }}
