@@ -5,18 +5,18 @@ on:
     branches:
       - main-v1
     paths:
-      - 'djinn_server/**'
+      - "djinn_server/**"
 
 jobs:
-Build:
-  runs-on: ubuntu-latest
-  steps:
-    - uses: actions/checkout@v2
-    # Build docker image
-    - name: Build Docker image
-      run: docker build -f djinn_server/Dockerfile -t nykaworks/djinn_server:${{ github.sha }} .
-    # Push image to private registry by logging in to the registry
-    - name: Push Docker image
-      run: |
-        docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
-        docker push nykaworks/djinn_server:${{ github.sha }}
+  Build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      # Build docker image
+      - name: Build Docker image
+        run: docker build -f djinn_server/Dockerfile -t nykaworks/djinn_server:${{ github.sha }} .
+      # Push image to private registry by logging in to the registry
+      - name: Push Docker image
+        run: |
+          docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+          docker push nykaworks/djinn_server:${{ github.sha }}
