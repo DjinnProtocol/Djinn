@@ -4,6 +4,7 @@ env:
   DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
   DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
   PULUMI_CONFIG_PASSPHRASE: "Start1234%"
+  KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
 
 on:
   push:
