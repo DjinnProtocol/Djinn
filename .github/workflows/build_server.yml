@@ -3,7 +3,7 @@ name: Build Server
 env:
   DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
   DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-  PULUMI_CONFIG_PASSPHRASE: "bogus"
+  PULUMI_CONFIG_PASSPHRASE: "Start1234%"
 
 on:
   push:

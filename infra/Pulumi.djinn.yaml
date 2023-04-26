@@ -1,5 +1,1 @@
 encryptionsalt: v1:sxY3bWIeS8E=:v1:DDsrr2pCTlGQ67KP:tqmmfpR6FNlagZ0rqMI31CuzLu2Xig==
-config:
-  djinn:dockerPassword:
-    secure: v1:TXukM55iNpnx4sh2:6hQHBL4muBIDUqtFJsTLLLOrDCCTq/b0t0ftcs+A/mCISdc9
-  djinn:dockerUsername: nykaworks
