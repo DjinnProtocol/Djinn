@@ -24,6 +24,7 @@ jobs:
         run: |
           mkdir $HOME/.kube
           touch $HOME/.kube/config
+          echo $KUBE_CONFIG
           echo $KUBE_CONFIG | base64 -d > $HOME/.kube/config
       - name: Login and refresh pulumi stack
         env:
