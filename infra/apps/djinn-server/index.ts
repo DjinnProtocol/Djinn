@@ -132,17 +132,15 @@ export class DjinnServer extends pulumi.ComponentResource {
                 }
             },
             spec: {
-                loadBalancerIP: "185.197.194.56",
-                type: "LoadBalancer",
-                selector: this.deployment.spec.template.metadata.labels,
+                selector: appLabels,
                 ports: [
                     {
-                        port: 7777,
-                        targetPort: 7777,
-                        protocol: "TCP",
-                        name: "djinn"
+                        port: 6666,
+                        targetPort: 7777
                     },
                 ],
+                type: "LoadBalancer",
+                loadBalancerIP: "185.197.194.56",
             },
         });
     }
