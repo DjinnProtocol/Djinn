@@ -30,7 +30,6 @@ jobs:
           touch $HOME/.kube/config
           echo $KUBE_CONFIG | base64 --decode > $HOME/.kube/config
           chown -R $USER $HOME/.kube
-          cat $HOME/.kube/config
           kubectl get nodes
       - name: Login locally
         run: |
