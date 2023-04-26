@@ -127,6 +127,9 @@ export class DjinnServer extends pulumi.ComponentResource {
         this.service = new k8s.core.v1.Service("djinn-server-service", {
             metadata: {
                 namespace: this.namespace.metadata.name,
+                annotations: {
+                    "metallb.universe.tf/allow-shared-ip": "mainip"
+                }
             },
             spec: {
                 loadBalancerIP: "185.197.194.56",
