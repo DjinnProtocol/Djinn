@@ -16,21 +16,19 @@ on:
 jobs:
   Build:
     runs-on: ubuntu-latest
-    container:
-      image: dtzar/helm-kubectl:latest
     steps:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
         # The ordinary pulumi/actions workflow:
       - uses: actions/checkout@v3
       - uses: pulumi/actions@v4
-    #   - uses: azure/setup-kubectl@v3
+      - uses: azure/setup-kubectl@v3
         id: install
       - name: Setup kubeconfig
         run: |
           mkdir $HOME/.kube
           touch $HOME/.kube/config
-          echo $KUBE_CONFIG > $HOME/.kube/config
+          echo $KUBE_CONFIG | base64 --decode > $HOME/.kube/config
           chown -R $USER $HOME/.kube
           kubectl get nodes
       - name: Login locally
