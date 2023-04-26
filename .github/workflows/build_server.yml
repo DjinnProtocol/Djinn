@@ -1,4 +1,4 @@
-name: Build Server
+name: Build and Deploy Server
 
 env:
   DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
@@ -10,11 +10,11 @@ on:
   push:
     branches:
       - main-v1
-    # paths:
-    #   - "djinn_server/**"
+    paths:
+      - "djinn_server/**"
 
 jobs:
-  Build:
+  Deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Set up QEMU

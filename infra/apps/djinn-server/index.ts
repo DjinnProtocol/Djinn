@@ -125,6 +125,9 @@ export class DjinnServer extends pulumi.ComponentResource {
                 namespace: this.namespace.metadata.name,
             },
             spec: {
+                externalIPs: [
+                    "185.197.194.56"
+                ],
                 type: "NodePort",
                 selector: this.deployment.spec.template.metadata.labels,
                 ports: [
