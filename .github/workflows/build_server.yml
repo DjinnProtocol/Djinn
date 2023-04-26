@@ -1,5 +1,10 @@
 name: Build Server
 
+env:
+  DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+  DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+  PULUMI_CONFIG_PASSPHRASE: "bogus"
+
 on:
   push:
     branches:
@@ -19,8 +24,6 @@ jobs:
       - uses: azure/setup-kubectl@v3
         id: install
       - name: Setup kubeconfig
-        env:
-          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
         run: |
           mkdir $HOME/.kube
           touch $HOME/.kube/config
@@ -30,22 +33,14 @@ jobs:
           cd infra
           pulumi login --local
       - name: Create stack
-        env:
-          PULUMI_CONFIG_PASSPHRASE: "bogus"
         run: |
             cd infra
             pulumi stack init djinn
       - name: Refresh stack
-        env:
-          PULUMI_CONFIG_PASSPHRASE: "bogus"
         run: |
             cd infra
             pulumi refresh -y
       - name: Build and apply infra
-        env:
-          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-          PULUMI_CONFIG_PASSPHRASE: "bogus"
         run: |
           cd infra
           pulumi up -y
