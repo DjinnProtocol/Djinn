@@ -3,7 +3,7 @@ name: Build Server
 env:
   DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
   DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-  PULUMI_CONFIG_PASSPHRASE: "Start1234%"
+  PULUMI_CONFIG_PASSPHRASE: "bogus"
   KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
 
 on:
@@ -31,20 +31,22 @@ jobs:
           echo $KUBE_CONFIG | base64 --decode > $HOME/.kube/config
           chown -R $USER $HOME/.kube
           kubectl get nodes
-      - name: Login locally
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-2
+      - name: Login on s3 bucket
         run: |
           cd infra
-          pulumi login --local
-      - name: Create stack
+          pulumi login s3://nykaworks-infra
+      - name: Install dependencies
         run: |
             cd infra
-            pulumi stack init djinn
             npm i
-      - name: Refresh stack
-        run: |
-            cd infra
-            pulumi refresh -y
       - name: Build and apply infra
         run: |
           cd infra
+          pulumi stack select djinn
           pulumi up -y
