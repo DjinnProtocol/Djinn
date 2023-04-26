@@ -16,9 +16,15 @@ jobs:
         # The ordinary pulumi/actions workflow:
       - uses: actions/checkout@v3
       - uses: pulumi/actions@v4
-        with:
-          command: up
-          refresh: true
-          upsert: true
-          stack-name: djinn
-          work-dir: infra
+      - name: Login and refresh pulumi stack
+        run: |
+          cd infra
+          pulumi login --local
+          pulumi refresh
+      - name: Build and apply infra
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        run: |
+          cd infra
+          pulumi up -y
