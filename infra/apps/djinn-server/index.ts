@@ -135,7 +135,7 @@ export class DjinnServer extends pulumi.ComponentResource {
                 selector: appLabels,
                 ports: [
                     {
-                        port: 6666,
+                        port: 7777,
                         targetPort: 7777
                     },
                 ],
