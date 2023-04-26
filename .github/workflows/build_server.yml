@@ -12,6 +12,7 @@ on:
       - main-v1
     paths:
       - "djinn_server/**"
+      - "infra/**"
 
 jobs:
   Deploy:

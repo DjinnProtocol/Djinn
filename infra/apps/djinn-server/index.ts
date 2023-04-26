@@ -45,15 +45,17 @@ export class DjinnServer extends pulumi.ComponentResource {
             },
             type: "kubernetes.io/dockerconfigjson",
             data: {
-                ".dockerconfigjson": Buffer.from(JSON.stringify({
-                    auths: {
-                        [registry.server]: {
-                            username: registry.username,
-                            password: registry.password,
-                            email: "",
+                ".dockerconfigjson": Buffer.from(
+                    JSON.stringify({
+                        auths: {
+                            [registry.server]: {
+                                username: registry.username,
+                                password: registry.password,
+                                email: "",
+                            },
                         },
-                    },
-                })).toString("base64"),
+                    })
+                ).toString("base64"),
             },
         });
 
@@ -73,7 +75,6 @@ export class DjinnServer extends pulumi.ComponentResource {
         //         }
         //     }
         // );
-
 
         this.deployment = new k8s.apps.v1.Deployment(
             "djinn-server-deployment",
@@ -104,16 +105,16 @@ export class DjinnServer extends pulumi.ComponentResource {
                                     env: [
                                         {
                                             name: "RUST_LOG",
-                                            value: "debug"
-                                        }
-                                    ]
+                                            value: "debug",
+                                        },
+                                    ],
                                 },
                             ],
                             imagePullSecrets: [
                                 {
-                                    name: this.dockerSecret.metadata.name
-                                }
-                            ]
+                                    name: this.dockerSecret.metadata.name,
+                                },
+                            ],
                         },
                     },
                 },
@@ -125,9 +126,7 @@ export class DjinnServer extends pulumi.ComponentResource {
                 namespace: this.namespace.metadata.name,
             },
             spec: {
-                externalIPs: [
-                    "185.197.194.56"
-                ],
+                externalIPs: ["185.197.194.56"],
                 type: "NodePort",
                 selector: this.deployment.spec.template.metadata.labels,
                 ports: [
@@ -136,10 +135,10 @@ export class DjinnServer extends pulumi.ComponentResource {
                         targetPort: 7777,
                         protocol: "TCP",
                         name: "djinn",
-                        nodePort: 30777
-                    }
-                ]
-            }
+                        nodePort: 30777,
+                    },
+                ],
+            },
         });
     }
 }
