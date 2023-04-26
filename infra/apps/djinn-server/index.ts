@@ -26,7 +26,7 @@ export class DjinnServer extends pulumi.ComponentResource {
             build: {
                 context: "../",
                 dockerfile: "../djinn_server/Dockerfile",
-                // platform: "linux/amd64",
+                platform: "linux/amd64",
             },
             imageName: "registry.nykaworks.com/djinn_server:latest",
             registry,
