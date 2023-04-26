@@ -5,7 +5,7 @@ env:
   DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
   PULUMI_CONFIG_PASSPHRASE: "bogus"
   KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
-
+  GITHUB_SHA: ${{ vars.GITHUB_SHA }}
 on:
   push:
     branches:

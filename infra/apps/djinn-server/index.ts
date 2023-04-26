@@ -4,6 +4,7 @@ import * as k8s from "@pulumi/kubernetes";
 
 const username = process.env.DOCKER_USERNAME;
 const password = process.env.DOCKER_PASSWORD;
+const githubSha = process.env.GITHUB_SHA ?? "latest";
 
 // Create registry
 const registry = {
@@ -28,8 +29,10 @@ export class DjinnServer extends pulumi.ComponentResource {
                 dockerfile: "../djinn_server/Dockerfile",
                 platform: "linux/amd64",
             },
-            imageName: "registry.nykaworks.com/djinn_server:latest",
+            imageName: `registry.nykaworks.com/djinn_server:${githubSha}`,
             registry,
+        }, {
+            retainOnDelete: true
         });
 
         this.namespace = new k8s.core.v1.Namespace("djinn-server-namespace", {
@@ -126,16 +129,15 @@ export class DjinnServer extends pulumi.ComponentResource {
                 namespace: this.namespace.metadata.name,
             },
             spec: {
-                externalIPs: ["185.197.194.56"],
-                type: "NodePort",
+                loadBalancerIP: "185.197.194.56",
+                type: "LoadBalancer",
                 selector: this.deployment.spec.template.metadata.labels,
                 ports: [
                     {
                         port: 7777,
                         targetPort: 7777,
                         protocol: "TCP",
-                        name: "djinn",
-                        nodePort: 30777,
+                        name: "djinn"
                     },
                 ],
             },
