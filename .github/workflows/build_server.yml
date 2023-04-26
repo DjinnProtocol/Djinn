@@ -37,6 +37,7 @@ jobs:
         run: |
             cd infra
             pulumi stack init djinn
+            npm i
       - name: Refresh stack
         run: |
             cd infra
@@ -44,5 +45,4 @@ jobs:
       - name: Build and apply infra
         run: |
           cd infra
-          npm i
           pulumi up -y
