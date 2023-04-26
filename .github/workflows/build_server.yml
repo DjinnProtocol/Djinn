@@ -16,11 +16,22 @@ jobs:
         # The ordinary pulumi/actions workflow:
       - uses: actions/checkout@v3
       - uses: pulumi/actions@v4
+      - uses: azure/setup-kubectl@v3
+        id: install
+      - name: Setup kubeconfig
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+        run: |
+          mkdir $HOME/.kube
+          touch $HOME/.kube/config
+          echo $KUBE_CONFIG | base64 -d > $HOME/.kube/config
       - name: Login and refresh pulumi stack
+        env:
+          PULUMI_CONFIG_PASSPHRASE: "bogus"
         run: |
           cd infra
           pulumi login --local
-          pulumi stack select dev
+          pulumi stack init djinn
           pulumi refresh -y
       - name: Build and apply infra
         env:
