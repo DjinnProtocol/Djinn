@@ -24,7 +24,7 @@ jobs:
         # The ordinary pulumi/actions workflow:
       - uses: actions/checkout@v3
       - uses: pulumi/actions@v4
-      - uses: azure/setup-kubectl@v3
+    #   - uses: azure/setup-kubectl@v3
         id: install
       - name: Setup kubeconfig
         run: |
