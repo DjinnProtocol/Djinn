@@ -20,7 +20,7 @@ jobs:
         run: |
           cd infra
           pulumi login --local
-          pulumi refresh
+          pulumi refresh -y
       - name: Build and apply infra
         env:
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
