@@ -25,18 +25,27 @@ jobs:
           mkdir $HOME/.kube
           touch $HOME/.kube/config
           echo $KUBE_CONFIG > $HOME/.kube/config
-      - name: Login and refresh pulumi stack
-        env:
-          PULUMI_CONFIG_PASSPHRASE: "bogus"
+      - name: Login locally
         run: |
           cd infra
           pulumi login --local
-          pulumi stack init djinn
-          pulumi refresh -y
+      - name: Create stack
+        env:
+          PULUMI_CONFIG_PASSPHRASE: "bogus"
+        run: |
+            cd infra
+            pulumi stack init djinn
+      - name: Refresh stack
+        env:
+          PULUMI_CONFIG_PASSPHRASE: "bogus"
+        run: |
+            cd infra
+            pulumi refresh -y
       - name: Build and apply infra
         env:
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+          PULUMI_CONFIG_PASSPHRASE: "bogus"
         run: |
           cd infra
           pulumi up -y
