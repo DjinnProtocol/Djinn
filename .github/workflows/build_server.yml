@@ -16,6 +16,8 @@ on:
 jobs:
   Build:
     runs-on: ubuntu-latest
+    container:
+      image: dtzar/helm-kubectl:latest
     steps:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
