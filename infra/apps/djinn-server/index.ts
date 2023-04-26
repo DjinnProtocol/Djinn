@@ -14,7 +14,7 @@ const registry = {
 };
 
 export class DjinnServer extends pulumi.ComponentResource {
-    // image: docker.Image;
+    image: docker.Image;
     namespace: k8s.core.v1.Namespace;
     deployment: k8s.apps.v1.Deployment;
     dockerSecret: k8s.core.v1.Secret;
@@ -23,17 +23,17 @@ export class DjinnServer extends pulumi.ComponentResource {
     constructor() {
         super("djinn-server", "djinn-server", {});
 
-        // this.image = new docker.Image("djinn-server-image", {
-        //     build: {
-        //         context: "../",
-        //         dockerfile: "../djinn_server/Dockerfile",
-        //         platform: "linux/amd64",
-        //     },
-        //     imageName: `registry.nykaworks.com/djinn_server:${githubSha}`,
-        //     registry,
-        // }, {
-        //     retainOnDelete: true
-        // });
+        this.image = new docker.Image("djinn-server-image", {
+            build: {
+                context: "../",
+                dockerfile: "../djinn_server/Dockerfile",
+                platform: "linux/amd64",
+            },
+            imageName: `registry.nykaworks.com/djinn_server:${githubSha}`,
+            registry,
+        }, {
+            retainOnDelete: true
+        });
 
         this.namespace = new k8s.core.v1.Namespace("djinn-server-namespace", {
             metadata: {
@@ -98,7 +98,7 @@ export class DjinnServer extends pulumi.ComponentResource {
                             containers: [
                                 {
                                     name: "djinn-server",
-                                    image: "registry.nykaworks.com/djinn_server:latest",
+                                    image: this.image.imageName,
                                     ports: [
                                         {
                                             containerPort: 7777,
