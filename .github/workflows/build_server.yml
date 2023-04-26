@@ -43,4 +43,5 @@ jobs:
       - name: Build and apply infra
         run: |
           cd infra
+          npm i
           pulumi up -y
