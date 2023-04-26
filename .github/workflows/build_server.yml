@@ -29,6 +29,7 @@ jobs:
           mkdir $HOME/.kube
           touch $HOME/.kube/config
           echo $KUBE_CONFIG > $HOME/.kube/config
+          kubectl get nodes
       - name: Login locally
         run: |
           cd infra
