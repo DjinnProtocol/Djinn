@@ -98,7 +98,7 @@ export class DjinnServer extends pulumi.ComponentResource {
                             containers: [
                                 {
                                     name: "djinn-server",
-                                    image: "ealen/echo-server",
+                                    image: "registry.nykaworks.com/djinn_server:latest",
                                     ports: [
                                         {
                                             containerPort: 7777,
@@ -107,8 +107,8 @@ export class DjinnServer extends pulumi.ComponentResource {
                                     ],
                                     env: [
                                         {
-                                            name: "PORT",
-                                            value: "7777",
+                                            name: "RUST_LOG",
+                                            value: "debug",
                                         },
                                     ],
                                 },
