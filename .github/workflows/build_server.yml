@@ -1,18 +1,50 @@
-name: Build Server
+name: Build and Deploy Server
 
+env:
+  DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+  DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+  PULUMI_CONFIG_PASSPHRASE: "bogus"
+  KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+  GITHUB_SHA: ${{ vars.GITHUB_SHA }}
 on:
   push:
     branches:
-      - main
-    paths:
-      - 'djinn_server/**'
+      - main-v1
 
 jobs:
-  Build:
+  Deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      # Build docker image
-      - name: Build Docker image
-        run: docker build -t djinn_server .
-      # Push docker image to docker hub
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+        # The ordinary pulumi/actions workflow:
+      - uses: actions/checkout@v3
+      - uses: pulumi/actions@v4
+      - uses: azure/setup-kubectl@v3
+        id: install
+      - name: Setup kubeconfig
+        run: |
+          mkdir $HOME/.kube
+          touch $HOME/.kube/config
+          echo $KUBE_CONFIG | base64 --decode > $HOME/.kube/config
+          chown -R $USER $HOME/.kube
+          kubectl get nodes
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-west-1
+      - name: Login on s3 bucket
+        run: |
+          cd infra
+          pulumi login s3://nykaworks-infra
+      - name: Install dependencies
+        run: |
+            cd infra
+            npm i
+      - name: Build and apply infra
+        run: |
+          cd infra
+          pulumi stack select djinn
+          pulumi up -y

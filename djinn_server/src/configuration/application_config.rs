@@ -34,7 +34,7 @@ impl ApplicationConfig {
 
     fn get_defaults() -> ApplicationConfig {
         ApplicationConfig {
-            host: Some("127.0.0.1".to_string()),
+            host: Some("0.0.0.0".to_string()),
             port: Some(7777),
             amount_of_threads: Some(4),
             serving_directory: Some("./files".to_string())
