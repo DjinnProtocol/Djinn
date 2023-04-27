@@ -39,10 +39,10 @@ export class DjinnServer extends pulumi.ComponentResource {
         this.clientImage = new docker.Image("djinn-client-image", {
             build: {
                 context: "../",
-                dockerfile: "../djinn_client/Dockerfile",
+                dockerfile: "../djinn_client_cli/Dockerfile",
                 platform: "linux/amd64",
             },
-            imageName: `registry.nykaworks.com/djinn_client:${githubSha}`,
+            imageName: `registry.nykaworks.com/djinn_client_cli:${githubSha}`,
             registry,
         }, {
             retainOnDelete: true
