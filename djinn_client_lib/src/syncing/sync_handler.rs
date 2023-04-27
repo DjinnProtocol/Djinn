@@ -84,14 +84,14 @@ impl SyncHandler {
         let new_job_id = self.job_id.unwrap();
 
         let stream = connection.stream.lock().await;
-        let cloned_stream = stream.as_mut().unwrap().try_clone().unwrap();
+        // let cloned_stream = stream.as_mut().unwrap().try_clone().unwrap();
 
-        task::spawn (async move {
-            let mut fs_poller = FsPoller::new(new_target, new_job_id);
-            fs_poller.poll(stream).await.unwrap();
-        });
+        // task::spawn (async move {
+        //     let mut fs_poller = FsPoller::new(new_target, new_job_id);
+        //     fs_poller.poll(stream).await.unwrap();
+        // });
 
-        self.listen(connection).await?;
+        // self.listen(connection).await?;
 
 
         Ok(())
