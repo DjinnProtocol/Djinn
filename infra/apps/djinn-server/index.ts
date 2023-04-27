@@ -15,6 +15,7 @@ const registry = {
 
 export class DjinnServer extends pulumi.ComponentResource {
     image: docker.Image;
+    clientImage: docker.Image;
     namespace: k8s.core.v1.Namespace;
     deployment: k8s.apps.v1.Deployment;
     dockerSecret: k8s.core.v1.Secret;
@@ -30,6 +31,18 @@ export class DjinnServer extends pulumi.ComponentResource {
                 platform: "linux/amd64",
             },
             imageName: `registry.nykaworks.com/djinn_server:${githubSha}`,
+            registry,
+        }, {
+            retainOnDelete: true
+        });
+
+        this.clientImage = new docker.Image("djinn-client-image", {
+            build: {
+                context: "../",
+                dockerfile: "../djinn_client/Dockerfile",
+                platform: "linux/amd64",
+            },
+            imageName: `registry.nykaworks.com/djinn_client:${githubSha}`,
             registry,
         }, {
             retainOnDelete: true
