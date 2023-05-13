@@ -1,14 +1,18 @@
-use tokio::net::{TcpListener, TcpStream};
-use crate::{threads::ThreadPool, CONFIG};
+use std::sync::Arc;
+
+use tokio::{net::{TcpListener, TcpStream}, sync::Mutex};
+use crate::CONFIG;
+
+use super::{ConnectionData, Connection};
 
 pub struct Listener {
-    thread_pool: ThreadPool
+    connections: Vec<Arc<Mutex<ConnectionData>>>,
 }
 
 impl Listener {
     pub fn new() -> Listener {
         Listener {
-            thread_pool: ThreadPool::new(CONFIG.amount_of_threads.unwrap())
+            connections: vec![],
         }
     }
 
@@ -25,8 +29,12 @@ impl Listener {
     }
 
     async fn handle_new_connection(&mut self, stream: TcpStream) {
+        let mut connection_data = ConnectionData::new(stream);
+        let packed_connection_data = Arc::new(Mutex::new(connection_data));
+        self.connections.push(packed_connection_data.clone());
+
         tokio::spawn(async move {
-            let mut connection = Connection::new(stream);
+            let mut connection = Connection::new(packed_connection_data);
             connection.listen().await;
         });
     }

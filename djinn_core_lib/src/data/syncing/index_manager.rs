@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use async_recursion::async_recursion;
-use async_std::{fs, stream::StreamExt};
+use tokio::fs;
 
 pub struct IndexManager {
     pub index: HashMap<String, usize>,
@@ -41,13 +41,13 @@ impl IndexManager {
         let mut index = HashMap::new();
         let mut items = fs::read_dir(directory_path).await.unwrap();
 
-        while let Some(item) = items.next().await {
+        while let Ok(Some(item)) = items.next_entry().await {
             //Check if the path is a file
-            let unwrapped_item = item.as_ref().unwrap();
+            let unwrapped_item = item;
             let path_str = unwrapped_item.path().to_str().unwrap().to_string();
             let path_without_root = path_str.replace(&self.root, "/");
 
-            if unwrapped_item.path().is_file().await {
+            if unwrapped_item.path().is_file() {
                 //Get the file size
                 let last_modified = unwrapped_item.metadata().await.unwrap().modified().unwrap();
                 let last_modified_unix = last_modified.duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
@@ -70,6 +70,8 @@ impl IndexManager {
 #[cfg(test)]
 mod tests {
     use std::time::SystemTime;
+
+    use tokio::fs;
 
     use super::*;
 

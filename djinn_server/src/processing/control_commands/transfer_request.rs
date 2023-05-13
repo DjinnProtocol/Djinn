@@ -1,9 +1,7 @@
 use std::{collections::HashMap, error::Error};
-use async_std::fs;
-
-use async_std::io::WriteExt;
 use async_trait::async_trait;
-use djinn_core_lib::data::packets::{ControlPacket, PacketType, ControlPacketType, packet::Packet, TransferDenyReason};
+use djinn_core_lib::data::packets::{ControlPacket, ControlPacketType, TransferDenyReason};
+use tokio::fs;
 
 use crate::{connectivity::Connection, CONFIG, jobs::{Job, JobType, JobStatus}};
 
@@ -31,22 +29,23 @@ impl ControlCommand for TransferRequestCommand {
         }
 
         //Create job
+        let job_id = connection.new_job_id().await;
         let job = Job {
-            id: connection.new_job_id(),
+            id: job_id.clone(),
             job_type: JobType::Transfer,
             status: JobStatus::Pending,
             params: packet.params.clone()
         };
 
-        connection.jobs.push(job.clone());
+        connection.add_job(job).await;
 
         //Send response
         let mut response = ControlPacket::new(ControlPacketType::TransferAck, HashMap::new());
-        response.params.insert("job_id".to_string(), job.id.to_string());
+        response.params.insert("job_id".to_string(), job_id.to_string());
 
         connection.send_packet(response).await?;
 
-        connection.stream.flush().await.unwrap();
+        connection.flush().await;
 
         return Ok(());
     }

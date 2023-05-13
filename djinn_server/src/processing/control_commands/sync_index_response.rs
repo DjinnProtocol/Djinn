@@ -1,8 +1,8 @@
 use std::{collections::HashMap, error::Error};
 
-use async_std::{io::WriteExt, fs};
 use async_trait::async_trait;
-use djinn_core_lib::data::{packets::{ControlPacket, PacketType, ControlPacketType, packet::Packet}, syncing::IndexManager};
+use djinn_core_lib::data::{packets::{ControlPacket, ControlPacketType}, syncing::IndexManager};
+use tokio::fs;
 
 use crate::{connectivity::Connection, jobs::JobType, syncing::{IndexComparer, SourceOfTruth}};
 
@@ -22,7 +22,8 @@ impl ControlCommand for SyncIndexResponseCommand {
         }
 
         //Check if sync exists
-        let possible_sync_job = connection.get_job(packet.job_id.unwrap());
+        let possible_sync_job = connection.get_job(packet.job_id.unwrap()).await;
+
 
         if possible_sync_job.is_none() {
             error!("SyncIndexResponse packet does not contain a valid job id");
@@ -30,7 +31,8 @@ impl ControlCommand for SyncIndexResponseCommand {
         }
 
         //Check if sync is a sync job
-        let sync_job = possible_sync_job.unwrap();
+        let sync_job_arc = possible_sync_job.unwrap().clone();
+        let sync_job = sync_job_arc.lock().await;
 
         if !matches!(sync_job.job_type, JobType::Sync) {
             error!("SyncIndexResponse packet job id does not belong to a sync job");
@@ -76,7 +78,7 @@ impl ControlCommand for SyncIndexResponseCommand {
 
         connection.send_packet(response).await.unwrap();
 
-        connection.stream.flush().await.unwrap();
+        connection.flush().await;
 
         Ok(())
     }

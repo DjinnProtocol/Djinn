@@ -1,9 +1,7 @@
 use std::{collections::HashMap, error::Error};
-use async_std::fs;
-
-use async_std::io::WriteExt;
 use async_trait::async_trait;
-use djinn_core_lib::data::packets::{ControlPacket, ControlPacketType, packet::Packet, TransferDenyReason};
+use djinn_core_lib::data::packets::{ControlPacket, ControlPacketType, TransferDenyReason};
+use tokio::fs;
 
 use crate::{connectivity::Connection, CONFIG, jobs::{Job, JobType, JobStatus}};
 
@@ -23,36 +21,37 @@ impl ControlCommand for SyncRequestCommand {
             let mut params = HashMap::new();
             params.insert("reason".to_string(), TransferDenyReason::FileNotFound.to_string());
 
-            let response = ControlPacket::new(ControlPacketType::SyncDeny, params);
-            connection.stream.write(&response.to_buffer()).await.unwrap();
+            let response_packet = ControlPacket::new(ControlPacketType::SyncDeny, params);
+            connection.send_packet(response_packet).await?;
+            connection.flush().await;
 
             return Ok(());
         }
 
+        let job_id = connection.new_job_id().await;
         //Create job
         let job = Job {
-            id: connection.new_job_id(),
+            id: job_id.clone(),
             job_type: JobType::Sync,
             status: JobStatus::Pending,
             params: packet.params.clone()
         };
 
-        connection.jobs.push(job.clone());
+        connection.add_job(job).await;
 
         //Send response
         let mut response = ControlPacket::new(ControlPacketType::SyncAck, HashMap::new());
-        response.params.insert("job_id".to_string(), job.id.to_string());
-
+        response.params.insert("job_id".to_string(), job_id.to_string());
         connection.send_packet(response).await?;
 
         //Also send index request packet
         let mut index_request_packet = ControlPacket::new(ControlPacketType::SyncIndexRequest, HashMap::new());
-        index_request_packet.job_id = Some(job.id);
+        index_request_packet.job_id = Some(job_id);
         connection.send_packet(index_request_packet).await?;
 
-        connection.stream.flush().await.unwrap();
+        connection.flush().await;
 
-        debug!("Sent index request packet for sync job {}", job.id);
+        debug!("Sent index request packet for sync job {}", job_id);
 
         return Ok(());
     }

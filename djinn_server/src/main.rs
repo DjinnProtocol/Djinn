@@ -3,7 +3,6 @@ use configuration::application_config::ApplicationConfig;
 use connectivity::Listener;
 use lazy_static::lazy_static;
 
-mod threads;
 mod connectivity;
 mod configuration;
 mod processing;
@@ -20,6 +19,7 @@ lazy_static! {
 
 #[tokio::main]
 async fn main(){
+    pretty_env_logger::init();
     let mut listener = Listener::new();
     listener.listen_for_connections().await;
 }

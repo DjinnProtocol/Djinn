@@ -1,8 +1,4 @@
-use async_std::{
-    io::{BufReader, ReadExt},
-    net::TcpStream,
-    path::Iter,
-};
+use tokio::{io::{ReadHalf, BufReader, AsyncReadExt}, net::TcpStream};
 
 use crate::data::packets::packet::{deserialize_packet, get_packet_length};
 
@@ -19,7 +15,7 @@ impl PacketReader {
         };
     }
 
-    pub async fn read(&mut self, reader: &mut BufReader<&mut TcpStream>, max_packets: Option<usize>) -> Vec<Box<dyn Packet>> {
+    pub async fn read(&mut self, reader: &mut BufReader<&mut ReadHalf<TcpStream>>, max_packets: Option<usize>) -> Vec<Box<dyn Packet>> {
         let mut packets: Vec<Box<dyn Packet>> = Vec::with_capacity(10);
 
         while packets.len() == 0 {

@@ -1,7 +1,8 @@
 use std::{collections::HashMap, error::Error};
 
-use async_std::{fs::File, io::{WriteExt, BufReader}};
+
 use djinn_core_lib::data::packets::{packet::Packet, ControlPacket, ControlPacketType, PacketType, DataPacket, PacketReader};
+use tokio::{fs::File, io::{BufReader, AsyncWriteExt}};
 
 use crate::connectivity::Connection;
 
@@ -81,7 +82,7 @@ impl GetCommand {
         let mut file = File::create(self.file_path.clone()).await?;
 
         //Wait for the server to send the file
-        let mut stream = connection.stream.lock().await;
+        let mut stream = connection.read_stream.lock().await;
         let mut reader = BufReader::new(stream.as_mut().unwrap());
         let mut packet_reader = PacketReader::new();
         let mut last_packet_received = false;

@@ -1,16 +1,13 @@
 use clap::{arg, Command};
 use djinn_client_lib::DjinnClient;
-use futures::executor::block_on;
 
 #[macro_use]
 extern crate log;
 
-fn main() {
-    pretty_env_logger::init();
-    block_on(async_main());
-}
 
-async fn async_main() {
+#[tokio::main]
+async fn main() {
+    pretty_env_logger::init();
     // let mut djinn_client = DjinnClient::new("127.0.0.1".to_string(), 7777).await.unwrap();
 
     // return djinn_client.sync_internal("/".to_string(), "./files".to_string()).await;
@@ -73,16 +70,16 @@ async fn async_main() {
             debug!("Destination: {}", destination);
             // djinn_client.put(file, destination).await;
         }
-        Some(("sync", matches)) => {
-            debug!("Sync command called");
-            let path_arg = matches.get_one::<String>("path").unwrap();
-            let path = path_arg.to_owned();
-            debug!("Path: {}", path);
-            let target_arg = matches.get_one::<String>("target").unwrap();
-            let target = target_arg.to_owned();
+        // Some(("sync", matches)) => {
+        //     debug!("Sync command called");
+        //     let path_arg = matches.get_one::<String>("path").unwrap();
+        //     let path = path_arg.to_owned();
+        //     debug!("Path: {}", path);
+        //     let target_arg = matches.get_one::<String>("target").unwrap();
+        //     let target = target_arg.to_owned();
 
-            djinn_client.sync_internal(path, target).await;
-        }
+        //     djinn_client.sync_internal(path, target).await;
+        // }
         _ => unreachable!(),
     }
 

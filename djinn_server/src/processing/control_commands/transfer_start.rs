@@ -1,14 +1,10 @@
-use std::{collections::HashMap, error::Error};
-use async_std::fs::{self, File};
-
-
-use async_std::io::{WriteExt, BufReader, ReadExt, BufWriter};
-use async_std::stream::StreamExt;
+use std::error::Error;
 use async_trait::async_trait;
-use djinn_core_lib::data::packets::{DataPacket, DataPacketGeneratorIterator, DataPacketGenerator};
-use djinn_core_lib::data::packets::{ControlPacket, PacketType, ControlPacketType, packet::Packet, TransferDenyReason};
+use djinn_core_lib::data::packets::DataPacketGenerator;
+use djinn_core_lib::data::packets::{ControlPacket, packet::Packet};
+use tokio::io::{BufWriter, AsyncWriteExt};
 
-use crate::{connectivity::Connection, CONFIG, jobs::{Job, JobType, JobStatus}};
+use crate::{connectivity::Connection, CONFIG, jobs::{JobType, JobStatus}};
 
 use super::ControlCommand;
 
@@ -21,7 +17,8 @@ impl ControlCommand for TransferStartCommand {
         let job_id = packet.params.get("job_id").unwrap().parse::<u32>().unwrap();
 
         // Get the job from the connection
-        let job = connection.get_job(job_id).unwrap();
+        let sync_job_arc = connection.get_job(job_id).await.unwrap().clone();
+        let job = sync_job_arc.lock().await;
 
         // If the job is not a transfer job, return an error
         if !matches!(job.job_type, JobType::Transfer) {
@@ -46,21 +43,18 @@ impl ControlCommand for TransferStartCommand {
         // Open da file
         let packet_generator = DataPacketGenerator::new(job_id, full_path);
         let iterator = packet_generator.iter();
-        let mut writer = BufWriter::new(&mut connection.stream);
+
+        // Get connection read_stream
+        let mut write_stream_arc = connection.get_write_stream().await;
+        let mut write_stream = write_stream_arc.lock().await;
+        let mut writer = BufWriter::new(&mut *write_stream);
 
         for packet in iterator {
             let buffer = &packet.to_buffer();
+            writer.write_all(&buffer).await?;
             //Log first 4 bytes
             // debug!("Packet length: {}", u32::from_be_bytes([buffer[0], buffer[1], buffer[2], buffer[3]]));
             // debug!("Actual Length: {}", buffer.len());
-
-            let mut written_bytes = 0;
-
-            while written_bytes < buffer.len() {
-                let written = writer.write(&buffer[written_bytes..]).await?;
-                // debug!("Written: {}", written);
-                written_bytes += written;
-            }
 
             // debug!("sent: {:?}", String::from_utf8(packet.data.clone()));
         }
