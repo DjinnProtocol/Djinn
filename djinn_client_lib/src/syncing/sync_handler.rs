@@ -1,193 +1,209 @@
-// use std::{error::Error, collections::HashMap};
+use std::{collections::HashMap, error::Error, sync::Arc};
 
-// use async_std::task;
-// use djinn_core_lib::data::{packets::{ControlPacketType, ControlPacket, PacketType, packet::Packet}, syncing::IndexManager};
+use djinn_core_lib::data::{
+    packets::{packet::Packet, ControlPacket, ControlPacketType, PacketType},
+    syncing::IndexManager,
+};
+use tokio::{time::sleep, io::{ReadHalf, BufReader}, net::TcpStream, sync::Mutex};
 
-// use crate::{connectivity::Connection, syncing::fs_poller::FsPoller};
+use crate::{connectivity::Connection};
 
-// pub struct SyncHandler {
-//     pub path: String,
-//     pub target: String,
-//     pub job_id: Option<u32>,
-//     pub polling_ready: bool
-// }
+pub struct SyncHandler {
+    pub path: String,
+    pub target: String,
+    pub job_id: Option<u32>,
+    pub polling_ready: bool,
+}
 
-// impl SyncHandler {
-//     pub fn new(path: String, target: String) -> SyncHandler {
-//         SyncHandler {
-//             path,
-//             target,
-//             job_id: None,
-//             polling_ready: false
-//         }
-//     }
+impl SyncHandler {
+    pub fn new(path: String, target: String) -> SyncHandler {
+        SyncHandler {
+            path,
+            target,
+            job_id: None,
+            polling_ready: false,
+        }
+    }
 
-//     pub async fn start(&mut self, connection: &mut Connection) -> Result<(), Box<dyn Error>> {
-//         //Ask the server to start syncing
-//         debug!("Sending sync request");
+    pub async fn start(&mut self, connection: &mut Connection) -> Result<(), Box<dyn Error>> {
+        //Ask the server to start syncing
+        debug!("Sending sync request");
 
-//         let mut params = HashMap::new();
-//         params.insert("path".to_string(), self.path.clone());
+        let mut params = HashMap::new();
+        params.insert("path".to_string(), self.path.clone());
 
-//         let packet = ControlPacket::new(ControlPacketType::SyncRequest, params);
-//         connection.send_packet(packet).await?;
+        let packet = ControlPacket::new(ControlPacketType::SyncRequest, params);
+        connection.send_packet(packet).await?;
 
-//         //Wait for the server to send the ack
-//         debug!("Waiting for sync ack");
-//         let boxed_packet = connection.read_next_packet().await?.unwrap();
+        //Wait for the server to send the ack
+        debug!("Waiting for sync ack");
+        let boxed_packet = connection.read_next_packet().await?.unwrap();
 
-//         if !matches!(boxed_packet.get_packet_type(), PacketType::Control) {
-//             return Err(Box::new(std::io::Error::new(
-//                 std::io::ErrorKind::Other,
-//                 "Unexpected packet type",
-//             )));
-//         }
+        if !matches!(boxed_packet.get_packet_type(), PacketType::Control) {
+            return Err(Box::new(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Unexpected packet type",
+            )));
+        }
 
-//         let control_packet = boxed_packet
-//             .as_any()
-//             .downcast_ref::<ControlPacket>()
-//             .unwrap();
+        let control_packet = boxed_packet
+            .as_any()
+            .downcast_ref::<ControlPacket>()
+            .unwrap();
 
-//             if matches!(
-//                 control_packet.control_packet_type,
-//                 ControlPacketType::SyncDeny
-//             ) {
-//                 let reason = control_packet.params.get("reason").unwrap();
-//                 return Err(Box::new(std::io::Error::new(
-//                     std::io::ErrorKind::Other,
-//                     format!("Transfer denied: {}", reason),
-//                 )));
-//             }
+        if matches!(
+            control_packet.control_packet_type,
+            ControlPacketType::SyncDeny
+        ) {
+            let reason = control_packet.params.get("reason").unwrap();
+            return Err(Box::new(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("Transfer denied: {}", reason),
+            )));
+        }
 
-//             if !matches!(
-//                 control_packet.control_packet_type,
-//                 ControlPacketType::SyncAck
-//             ) {
-//                 return Err(Box::new(std::io::Error::new(
-//                     std::io::ErrorKind::Other,
-//                     "Unexpected control packet type",
-//                 )));
-//             }
+        if !matches!(
+            control_packet.control_packet_type,
+            ControlPacketType::SyncAck
+        ) {
+            return Err(Box::new(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Unexpected control packet type",
+            )));
+        }
 
-//         let job_id = control_packet.params.get("job_id").unwrap().parse::<u32>().unwrap();
-//         self.job_id = Some(job_id);
+        let job_id = control_packet
+            .params
+            .get("job_id")
+            .unwrap()
+            .parse::<u32>()
+            .unwrap();
+        self.job_id = Some(job_id);
 
+        debug!("Received sync ack");
 
+        //Start listening to the server for updates and commands
+        debug!("Starting to listen for updates");
 
-//         debug!("Received sync ack");
+        let reader_arc = connection.reader.clone();
+        let write_stream_arc = connection.write_stream.clone();
+        let new_target = self.target.clone();
+        let new_job_id = self.job_id.clone().unwrap();
 
-//         //Start listening to the server for updates and commands
-//         debug!("Starting to listen for updates");
+        // tokio::spawn (async move {
+        //     let mut fs_poller = FsPoller::new(new_target, new_job_id);
+        //     fs_poller.poll(write_stream_arc).await.unwrap();
+        // });
 
-//         let new_target = self.target.clone();
+        self.listen(reader_arc, connection).await?;
+        Ok(())
+    }
 
-//         let new_job_id = self.job_id.unwrap();
+    async fn listen(&self, reader: Arc<Mutex<Option<BufReader<ReadHalf<TcpStream>>>>>, connection: &mut Connection) -> Result<(), Box<dyn Error>> {
+        // Handle incoming streams
+        let mut reader_option = reader.lock().await;
+        let reader = reader_option.as_mut().unwrap();
 
-//         let stream = connection.stream.lock().await;
-//         // let cloned_stream = stream.as_mut().unwrap().try_clone().unwrap();
+        loop {
+            let packets = connection.packet_reader.read2(reader, None).await;
 
-//         // task::spawn (async move {
-//         //     let mut fs_poller = FsPoller::new(new_target, new_job_id);
-//         //     fs_poller.poll(stream).await.unwrap();
-//         // });
+            if packets.len() == 0 {
+                // Connection closed
+                debug!("Connection closed");
+                break;
+            }
 
-//         // self.listen(connection).await?;
+            for packet in packets {
+                self.handle_boxed_packet(packet, &connection).await;
+            }
+        }
 
+        Ok(())
+    }
 
-//         Ok(())
+    pub async fn handle_boxed_packet<'a>(
+        &self,
+        boxed_packet: Box<dyn Packet + 'a>,
+        connection: &Connection,
+    ) {
+        let packet_ref: &dyn Packet = boxed_packet.as_ref();
 
-//     }
+        match packet_ref.get_packet_type() {
+            PacketType::Control => {
+                info!("Control packet received");
+                let control_packet = packet_ref.as_any().downcast_ref::<ControlPacket>().unwrap();
 
-//     async fn listen(&self, connection: &mut Connection) -> Result<(), Box<dyn Error>> {
-//         loop {
-//             let possible_boxed_packet = connection.read_next_packet().await?;
+                self.handle_control_packet(&control_packet, connection)
+                    .await;
+            }
+            PacketType::Data => {
+                // Throw error
+                panic!("Data packets are not supported yet")
+            }
+        }
+    }
 
-//             if possible_boxed_packet.is_none() {
-//                 break;
-//             }
+    pub async fn handle_control_packet(&self, packet: &ControlPacket, connection: &Connection) {
+        match packet.control_packet_type {
+            ControlPacketType::SyncIndexRequest => {
+                info!("Sync index request received");
 
-//             let boxed_packet = possible_boxed_packet.unwrap();
-//             self.handle_boxed_packet(boxed_packet, connection).await;
-//         }
+                let full_path = self.target.clone();
+                let mut index_manager = IndexManager::new(full_path);
+                index_manager.build().await;
 
-//         Ok(())
-//     }
+                let mut params = HashMap::new();
+                let index = index_manager.index;
 
-//     pub async fn handle_boxed_packet<'a>(&self, boxed_packet: Box<dyn Packet + 'a>, connection: &Connection) {
-//         let packet_ref: &dyn Packet = boxed_packet.as_ref();
+                //Stringify the timestamps
+                for (key, value) in index.iter() {
+                    params.insert(key.clone(), value.to_string());
+                }
 
-//         match packet_ref.get_packet_type() {
-//             PacketType::Control => {
-//                 info!("Control packet received");
-//                 let control_packet = packet_ref.as_any().downcast_ref::<ControlPacket>().unwrap();
+                let mut packet = ControlPacket::new(ControlPacketType::SyncIndexResponse, params);
 
-//                 self.handle_control_packet(&control_packet, connection).await;
-//             },
-//             PacketType::Data => {
-//                 // Throw error
-//                 panic!("Data packets are not supported yet")
-//             }
-//         }
-//     }
+                packet.job_id = self.job_id;
 
-//     pub async fn handle_control_packet(&self, packet: &ControlPacket, connection: &Connection) {
-//         match packet.control_packet_type {
-//             ControlPacketType::SyncIndexRequest => {
-//                 info!("Sync index request received");
+                connection.send_packet(packet).await.unwrap();
+            }
+            ControlPacketType::SyncUpdate => {
+                info!("Sync update received");
+            }
+            _ => {
+                //Log type
+                debug!(
+                    "Unknown control packet type: {:?}",
+                    packet.control_packet_type as u8
+                );
+                // Throw error
+                panic!("Unknown control packet type")
+            }
+        }
+    }
 
-//                 let full_path = self.target.clone();
-//                 let mut index_manager = IndexManager::new(full_path);
-//                 index_manager.build().await;
+    pub async fn poll_file_changes(&self, connection: &Connection) -> Result<(), Box<dyn Error>> {
+        let mut index_manager = IndexManager::new(self.target.clone());
 
-//                 let mut params = HashMap::new();
-//                 let index = index_manager.index;
+        loop {
+            index_manager.build().await;
 
-//                 //Stringify the timestamps
-//                 for (key, value) in index.iter() {
-//                     params.insert(key.clone(), value.to_string());
-//                 }
+            let mut params = HashMap::new();
+            let index = &index_manager.index;
 
-//                 let mut packet = ControlPacket::new(ControlPacketType::SyncIndexResponse, params);
+            //Stringify the timestamps
+            for (key, value) in index.iter() {
+                params.insert(key.clone(), value.to_string());
+            }
 
-//                 packet.job_id = self.job_id;
+            let mut packet = ControlPacket::new(ControlPacketType::SyncUpdate, params);
 
-//                 connection.send_packet(packet).await.unwrap();
-//             },
-//             ControlPacketType::SyncUpdate => {
-//                 info!("Sync update received");
-//             },
-//             _ => {
-//                 //Log type
-//                 debug!("Unknown control packet type: {:?}", packet.control_packet_type as u8);
-//                 // Throw error
-//                 panic!("Unknown control packet type")
-//             }
-//         }
-//     }
+            packet.job_id = self.job_id;
 
-//     pub async fn poll_file_changes(&self, connection: &Connection) -> Result<(), Box<dyn Error>> {
-//         let mut index_manager = IndexManager::new(self.target.clone());
+            connection.send_packet(packet).await.unwrap();
 
-//         loop {
-//             index_manager.build().await;
+            sleep(std::time::Duration::from_secs(1)).await;
+        }
 
-//             let mut params = HashMap::new();
-//             let index = &index_manager.index;
-
-//             //Stringify the timestamps
-//             for (key, value) in index.iter() {
-//                 params.insert(key.clone(), value.to_string());
-//             }
-
-//             let mut packet = ControlPacket::new(ControlPacketType::SyncUpdate, params);
-
-//             packet.job_id = self.job_id;
-
-//             connection.send_packet(packet).await.unwrap();
-
-//             task::sleep(std::time::Duration::from_secs(1)).await;
-//         }
-
-//         Ok(())
-//     }
-// }
+        Ok(())
+    }
+}

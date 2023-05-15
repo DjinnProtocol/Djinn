@@ -1,8 +1,8 @@
 use std::{collections::HashMap, error::Error};
 
 
-use djinn_core_lib::data::packets::{packet::Packet, ControlPacket, ControlPacketType, PacketType, DataPacket, PacketReader};
-use tokio::{fs::File, io::{BufReader, AsyncWriteExt}};
+use djinn_core_lib::data::packets::{ControlPacket, ControlPacketType, PacketType, DataPacket, PacketReader};
+use tokio::{fs::File, io::{AsyncWriteExt}};
 
 use crate::connectivity::Connection;
 
@@ -82,13 +82,23 @@ impl GetCommand {
         let mut file = File::create(self.file_path.clone()).await?;
 
         //Wait for the server to send the file
-        let mut stream = connection.read_stream.lock().await;
-        let mut reader = BufReader::new(stream.as_mut().unwrap());
+        let mut possible_reader = connection.reader.lock().await;
+
+        if possible_reader.is_none() {
+            return Err(Box::new(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Reader is none",
+            )));
+        }
+
+        let reader = possible_reader.as_mut().unwrap();
+
+
         let mut packet_reader = PacketReader::new();
         let mut last_packet_received = false;
 
         while !last_packet_received {
-            let packets = packet_reader.read(&mut reader, None).await;
+            let packets = packet_reader.read2(reader, None).await;
 
             if packets.len() == 0 {
                 debug!("Connection closed");

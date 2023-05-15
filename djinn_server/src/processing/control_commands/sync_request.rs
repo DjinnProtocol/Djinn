@@ -1,7 +1,7 @@
 use std::{collections::HashMap, error::Error};
 use async_trait::async_trait;
 use djinn_core_lib::data::packets::{ControlPacket, ControlPacketType, TransferDenyReason};
-use tokio::fs;
+use tokio::{fs, time::sleep};
 
 use crate::{connectivity::Connection, CONFIG, jobs::{Job, JobType, JobStatus}};
 
@@ -14,6 +14,7 @@ impl ControlCommand for SyncRequestCommand {
     async fn execute(&self, connection: &mut Connection, packet: &ControlPacket) -> Result<(), Box<dyn Error>> {
         let path = packet.params.get("path").unwrap();
         let full_path = CONFIG.serving_directory.clone().unwrap() + "/" + path;
+
 
 
         //Check if file exists if download request
@@ -43,12 +44,14 @@ impl ControlCommand for SyncRequestCommand {
         let mut response = ControlPacket::new(ControlPacketType::SyncAck, HashMap::new());
         response.params.insert("job_id".to_string(), job_id.to_string());
         connection.send_packet(response).await?;
+        connection.flush().await;
+
+        // sleep(std::time::Duration::from_millis(1000)).await;
 
         //Also send index request packet
         let mut index_request_packet = ControlPacket::new(ControlPacketType::SyncIndexRequest, HashMap::new());
         index_request_packet.job_id = Some(job_id);
         connection.send_packet(index_request_packet).await?;
-
         connection.flush().await;
 
         debug!("Sent index request packet for sync job {}", job_id);

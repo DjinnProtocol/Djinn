@@ -12,14 +12,17 @@ impl EchoCommand {
     }
 
     pub async fn execute(&self, connection: &mut Connection) -> Result<(), Box<dyn Error>> {
-        debug!("Executing echo command");
+        println!("Executing echo command");
         // Create packet
         let packet = ControlPacket::new(ControlPacketType::EchoRequest, HashMap::new());
         // Send packet
         let start = std::time::Instant::now();
+        println!("Sending echo packet");
         connection.send_packet(packet).await?;
+        connection.flush().await?;
+        println!("Send echo packet");
 
-        debug!("Sent echo request");
+        println!("Sent echo request");
 
         // Wait for response
         let response_packet = connection.read_next_packet().await?.unwrap();

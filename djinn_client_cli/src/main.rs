@@ -12,7 +12,6 @@ async fn main() {
 
     // return djinn_client.sync_internal("/".to_string(), "./files".to_string()).await;
 
-
     let matches = Command::new("djinn")
         .about("Djinn client CLI")
         .subcommand_required(true)
@@ -70,16 +69,16 @@ async fn main() {
             debug!("Destination: {}", destination);
             // djinn_client.put(file, destination).await;
         }
-        // Some(("sync", matches)) => {
-        //     debug!("Sync command called");
-        //     let path_arg = matches.get_one::<String>("path").unwrap();
-        //     let path = path_arg.to_owned();
-        //     debug!("Path: {}", path);
-        //     let target_arg = matches.get_one::<String>("target").unwrap();
-        //     let target = target_arg.to_owned();
+        Some(("sync", matches)) => {
+            debug!("Sync command called");
+            let path_arg = matches.get_one::<String>("path").unwrap();
+            let path = path_arg.to_owned();
+            debug!("Path: {}", path);
+            let target_arg = matches.get_one::<String>("target").unwrap();
+            let target = target_arg.to_owned();
 
-        //     djinn_client.sync_internal(path, target).await;
-        // }
+            djinn_client.sync_internal(path, target).await;
+        }
         _ => unreachable!(),
     }
 

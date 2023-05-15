@@ -7,7 +7,7 @@ put FILENAME:
 sync:
     cargo build --release && RUST_LOG=DEBUG ../target/release/djinn_client_cli --host 127.0.0.1 --port 7777 sync -p "/" -t "./files"
 echo:
-    cargo build --release && RUST_LOG=DEBUG. ./target/release/djinn_client_cli --host 127.0.0.1 --port 7777 echo
+    cargo build --release && RUST_LOG=DEBUG. ../target/release/djinn_client_cli --host 127.0.0.1 --port 7777 echo
 lint:
     cargo clippy --fix
 test:

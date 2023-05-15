@@ -82,6 +82,7 @@ impl Connection {
         let write_stream_arc = data.write_stream.clone();
         let mut write_stream = write_stream_arc.lock().await;
         write_stream.write_all(&buffer).await?;
+        write_stream.flush().await?;
 
         Ok(())
     }

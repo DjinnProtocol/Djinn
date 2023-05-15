@@ -45,13 +45,14 @@ impl ControlCommand for TransferStartCommand {
         let iterator = packet_generator.iter();
 
         // Get connection read_stream
-        let mut write_stream_arc = connection.get_write_stream().await;
+        let write_stream_arc = connection.get_write_stream().await;
         let mut write_stream = write_stream_arc.lock().await;
-        let mut writer = BufWriter::new(&mut *write_stream);
+        // let mut writer = BufWriter::new(&mut *write_stream);
+        // TODO: check speed difference between BufWriter and and native stream
 
         for packet in iterator {
             let buffer = &packet.to_buffer();
-            writer.write_all(&buffer).await?;
+            write_stream.write_all(&buffer).await?;
             //Log first 4 bytes
             // debug!("Packet length: {}", u32::from_be_bytes([buffer[0], buffer[1], buffer[2], buffer[3]]));
             // debug!("Actual Length: {}", buffer.len());
@@ -59,7 +60,7 @@ impl ControlCommand for TransferStartCommand {
             // debug!("sent: {:?}", String::from_utf8(packet.data.clone()));
         }
 
-        writer.flush().await?;
+        write_stream.flush().await?;
 
         debug!("Done sending data");
         return Ok(());

@@ -1,73 +1,79 @@
-// use std::{error::Error, time::Duration, collections::HashMap, sync::Arc};
+use std::{error::Error, time::Duration, collections::HashMap, sync::Arc};
 
-// use djinn_core_lib::data::{syncing::IndexManager, packets::{ControlPacket, ControlPacketType, packet::Packet}};
-// use tokio::{task, time::sleep};
+use djinn_core_lib::data::{syncing::IndexManager, packets::{ControlPacket, ControlPacketType, packet::Packet}};
+use tokio::{time::sleep, sync::Mutex, io::{WriteHalf, BufWriter, AsyncWriteExt}, net::TcpStream};
 
-// use crate::connectivity::Connection;
+pub struct FsPoller {
+    pub path: String,
+    pub job_id: u32
+}
 
-// use super::SyncHandler;
+impl FsPoller {
+    pub fn new(path: String, job_id: u32) -> FsPoller {
+        FsPoller {
+            path,
+            job_id
+        }
+    }
 
-// pub struct FsPoller {
-//     pub path: String,
-//     pub job_id: u32
-// }
+    pub async fn poll(&mut self, write_stream_arc: Arc<Mutex<Option<WriteHalf<TcpStream>>>>) -> Result<(), Box<dyn Error>> {
+        let mut index_manager = IndexManager::new(self.path.clone());
+        index_manager.build().await;
 
-// impl FsPoller {
-//     pub fn new(path: String, job_id: u32) -> FsPoller {
-//         FsPoller {
-//             path,
-//             job_id
-//         }
-//     }
+        loop {
+            debug!("Checking");
+            sleep(Duration::from_secs(1)).await;
+            //Check if the index has changed
+            let mut new_index_manager = IndexManager::new(self.path.clone());
+            new_index_manager.build().await;
 
-//     pub async fn poll(&mut self, write_strean: &mut TcpStream) -> Result<(), Box<dyn Error>> {
-//         let mut index_manager = IndexManager::new(self.path.clone());
-//         index_manager.build().await;
+            //Check if hashmaps are equal
+            let mut equal = false;
 
-//         loop {
-//             debug!("Checking");
-//             sleep(Duration::from_secs(1)).await;
-//             //Check if the index has changed
-//             let mut new_index_manager = IndexManager::new(self.path.clone());
-//             new_index_manager.build().await;
+            if new_index_manager.index.len() != index_manager.index.len() {
+                equal = false;
+            }
 
-//             //Check if hashmaps are equal
-//             let mut equal = false;
+            for(key, _) in index_manager.index.iter() {
+                if !new_index_manager.index.contains_key(key) {
+                    equal = false;
+                    break;
+                }
+            }
 
-//             if new_index_manager.index.len() != index_manager.index.len() {
-//                 equal = false;
-//             }
+            if !equal {
+                debug!("Index has changed, sending new index response");
+                //Send new index response
+                let mut params = HashMap::new();
+                let index = new_index_manager.index.clone();
 
-//             for(key, _) in index_manager.index.iter() {
-//                 if !new_index_manager.index.contains_key(key) {
-//                     equal = false;
-//                     break;
-//                 }
-//             }
+                //Stringify the timestamps
+                for (key, value) in index.iter() {
+                    params.insert(key.clone(), value.to_string());
+                }
 
-//             if !equal {
-//                 debug!("Index has changed, sending new index response");
-//                 //Send new index response
-//                 let mut params = HashMap::new();
-//                 let index = new_index_manager.index.clone();
+                let mut packet = ControlPacket::new(ControlPacketType::SyncIndexResponse, params);
 
-//                 //Stringify the timestamps
-//                 for (key, value) in index.iter() {
-//                     params.insert(key.clone(), value.to_string());
-//                 }
+                packet.job_id = Some(self.job_id);
 
-//                 let mut packet = ControlPacket::new(ControlPacketType::SyncIndexResponse, params);
+                let mut write_stream_option = write_stream_arc.lock().await;
 
-//                 packet.job_id = Some(self.job_id);
+                if write_stream_option.is_none() {
+                    debug!("Write stream is none");
+                    continue;
+                }
 
-//                 stream.write_all(packet.to_buffer().as_slice()).await?;
-//                 stream.flush().await?;
+                let write_stream = write_stream_option.as_mut().unwrap();
 
-//                 //Update index manager
-//                 index_manager = new_index_manager;
-//             }
 
-//             debug!("Done")
-//         }
-//     }
-// }
+                write_stream.write_all(packet.to_buffer().as_slice()).await?;
+                write_stream.flush().await?;
+
+                //Update index manager
+                index_manager = new_index_manager;
+            }
+
+            debug!("Done")
+        }
+    }
+}

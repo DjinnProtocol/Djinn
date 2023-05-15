@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use crate::{connectivity::Connection, commands::{EchoCommand, GetCommand}};
+use crate::{connectivity::Connection, commands::{EchoCommand, GetCommand}, syncing::SyncHandler};
 
 pub struct ClientInstance {
   connection: Connection,
@@ -32,10 +32,10 @@ impl ClientInstance {
     // command.execute(&mut self.connection).await.expect("AAA");
   }
 
-//   pub async fn sync_internal(&mut self, path: String, target: String) {
-//     let mut handler = SyncHandler::new(path, target);
-//     handler.start(&mut self.connection).await.expect("AAA");
-//   }
+  pub async fn sync_internal(&mut self, path: String, target: String) {
+    let mut handler = SyncHandler::new(path, target);
+    handler.start(&mut self.connection).await.expect("AAA");
+  }
 
   pub async fn disconnect(&mut self) -> Result<(), Box<dyn Error>> {
     self.connection.disconnect().await
