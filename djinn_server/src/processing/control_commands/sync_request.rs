@@ -46,13 +46,15 @@ impl ControlCommand for SyncRequestCommand {
         connection.send_packet(response).await?;
         connection.flush().await;
 
-        // sleep(std::time::Duration::from_millis(1000)).await;
 
         //Also send index request packet
         let mut index_request_packet = ControlPacket::new(ControlPacketType::SyncIndexRequest, HashMap::new());
         index_request_packet.job_id = Some(job_id);
         connection.send_packet(index_request_packet).await?;
         connection.flush().await;
+
+        sleep(std::time::Duration::from_millis(1000)).await;
+
 
         debug!("Sent index request packet for sync job {}", job_id);
 

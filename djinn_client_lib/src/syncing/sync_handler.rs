@@ -4,15 +4,21 @@ use djinn_core_lib::data::{
     packets::{packet::Packet, ControlPacket, ControlPacketType, PacketType},
     syncing::IndexManager,
 };
-use tokio::{time::sleep, io::{ReadHalf, BufReader}, net::TcpStream, sync::Mutex};
+use tokio::{
+    io::{BufReader, ReadHalf},
+    net::TcpStream,
+    sync::Mutex,
+    time::sleep,
+};
 
-use crate::{connectivity::Connection};
+use crate::{connectivity::Connection, commands::GetCommand};
 
 pub struct SyncHandler {
     pub path: String,
     pub target: String,
     pub job_id: Option<u32>,
     pub polling_ready: bool,
+    pub jobs: Vec<Job>,
 }
 
 impl SyncHandler {
@@ -35,74 +41,24 @@ impl SyncHandler {
         let packet = ControlPacket::new(ControlPacketType::SyncRequest, params);
         connection.send_packet(packet).await?;
 
-        //Wait for the server to send the ack
-        debug!("Waiting for sync ack");
-        let boxed_packet = connection.read_next_packet().await?.unwrap();
-
-        if !matches!(boxed_packet.get_packet_type(), PacketType::Control) {
-            return Err(Box::new(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "Unexpected packet type",
-            )));
-        }
-
-        let control_packet = boxed_packet
-            .as_any()
-            .downcast_ref::<ControlPacket>()
-            .unwrap();
-
-        if matches!(
-            control_packet.control_packet_type,
-            ControlPacketType::SyncDeny
-        ) {
-            let reason = control_packet.params.get("reason").unwrap();
-            return Err(Box::new(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!("Transfer denied: {}", reason),
-            )));
-        }
-
-        if !matches!(
-            control_packet.control_packet_type,
-            ControlPacketType::SyncAck
-        ) {
-            return Err(Box::new(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "Unexpected control packet type",
-            )));
-        }
-
-        let job_id = control_packet
-            .params
-            .get("job_id")
-            .unwrap()
-            .parse::<u32>()
-            .unwrap();
-        self.job_id = Some(job_id);
-
-        debug!("Received sync ack");
-
         //Start listening to the server for updates and commands
         debug!("Starting to listen for updates");
 
         let reader_arc = connection.reader.clone();
-        let write_stream_arc = connection.write_stream.clone();
-        let new_target = self.target.clone();
-        let new_job_id = self.job_id.clone().unwrap();
-
-        // tokio::spawn (async move {
-        //     let mut fs_poller = FsPoller::new(new_target, new_job_id);
-        //     fs_poller.poll(write_stream_arc).await.unwrap();
-        // });
-
         self.listen(reader_arc, connection).await?;
         Ok(())
     }
 
-    async fn listen(&self, reader: Arc<Mutex<Option<BufReader<ReadHalf<TcpStream>>>>>, connection: &mut Connection) -> Result<(), Box<dyn Error>> {
+    async fn listen(
+        &mut self,
+        reader: Arc<Mutex<Option<BufReader<ReadHalf<TcpStream>>>>>,
+        connection: &mut Connection,
+    ) -> Result<(), Box<dyn Error>> {
         // Handle incoming streams
         let mut reader_option = reader.lock().await;
         let reader = reader_option.as_mut().unwrap();
+
+        debug!("Actually started listening");
 
         loop {
             let packets = connection.packet_reader.read2(reader, None).await;
@@ -122,7 +78,7 @@ impl SyncHandler {
     }
 
     pub async fn handle_boxed_packet<'a>(
-        &self,
+        &mut self,
         boxed_packet: Box<dyn Packet + 'a>,
         connection: &Connection,
     ) {
@@ -143,7 +99,7 @@ impl SyncHandler {
         }
     }
 
-    pub async fn handle_control_packet(&self, packet: &ControlPacket, connection: &Connection) {
+    pub async fn handle_control_packet(&mut self, packet: &ControlPacket, connection: &Connection) {
         match packet.control_packet_type {
             ControlPacketType::SyncIndexRequest => {
                 info!("Sync index request received");
@@ -168,6 +124,19 @@ impl SyncHandler {
             }
             ControlPacketType::SyncUpdate => {
                 info!("Sync update received");
+                self.handle_sync_update(packet).await;
+            }
+            ControlPacketType::SyncAck => {
+                info!("Sync ack received");
+
+                let job_id = packet.params.get("job_id").unwrap().parse::<u32>().unwrap();
+                self.job_id = Some(job_id);
+            }
+            ControlPacketType::SyncDeny => {
+                info!("Sync deny received");
+
+                let reason = packet.params.get("reason").unwrap();
+                panic!("Sync denied: {}", reason)
             }
             _ => {
                 //Log type
@@ -177,6 +146,35 @@ impl SyncHandler {
                 );
                 // Throw error
                 panic!("Unknown control packet type")
+            }
+        }
+    }
+
+    pub async fn handle_sync_update(&mut self, packet: &ControlPacket) {
+        info!("Sync update received");
+        // Loop through hashmap params
+        for (key, value) in packet.params.iter() {
+            let key = key.clone();
+            let value = value.clone();
+
+            //TODO: improve
+            let getString = "GET".to_string();
+            let deleteString = "DELETE".to_string();
+            let putString = "PUT".to_string();
+
+            match value {
+                getString => {
+                    // Get the file from the client
+                    info!("Getting file {}", key);
+
+                deleteString => {
+                    // Delete the file from the client
+                    info!("Deleting file {}", key);
+                }
+                putString => {
+                    // Put the file on the client
+                    info!("Putting file {}", key);
+                }
             }
         }
     }

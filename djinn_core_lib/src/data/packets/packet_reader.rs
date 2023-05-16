@@ -5,12 +5,14 @@ use crate::data::packets::packet::{deserialize_packet, get_packet_length};
 use super::packet::Packet;
 
 pub struct PacketReader {
+    packetsProcessed: usize,
     buffer: Vec<u8>
 }
 
 impl PacketReader {
     pub fn new() -> PacketReader {
         return PacketReader {
+            packetsProcessed: 0,
             buffer: Vec::with_capacity(131072)
         };
     }
@@ -20,6 +22,9 @@ impl PacketReader {
 
         while packets.len() == 0 {
             let mut temp_buffer = [0; 65536];
+            debug!("Started reading");
+            debug!("Packet's processed: {}", self.packetsProcessed);
+            debug!("reader buffer size: {}", reader.buffer().len());
             let bytes_read = reader.read(&mut temp_buffer).await.unwrap();
 
             debug!("Bytes read: {}", bytes_read);
@@ -44,6 +49,8 @@ impl PacketReader {
 
                     //Remove packet from buffer
                     self.buffer.drain(0..packet_length);
+
+                    self.packetsProcessed += 1;
 
                     //Add packet to packets
                     packets.push(packet);
