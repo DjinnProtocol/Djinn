@@ -52,7 +52,7 @@ impl IndexManager {
                 let last_modified = unwrapped_item.metadata().await.unwrap().modified().unwrap();
                 let last_modified_unix = last_modified.duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
                 //Add the file name and size to the index
-                index.insert(path_without_root, last_modified_unix as usize);
+                index.insert(path_without_root.replace("//", "/"), last_modified_unix as usize);
             } else {
                 //If the path is a directory, recursively call the function
                 let sub_index = self.build_index(path_str).await;

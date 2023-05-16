@@ -1,10 +1,10 @@
 use std::{collections::HashMap, error::Error};
 
 use async_trait::async_trait;
-use djinn_core_lib::data::{packets::{ControlPacket, ControlPacketType}, syncing::IndexManager};
+use djinn_core_lib::{data::{packets::{ControlPacket, ControlPacketType}, syncing::IndexManager}, jobs::JobType};
 use tokio::fs;
 
-use crate::{connectivity::Connection, jobs::JobType, syncing::{IndexComparer, SourceOfTruth}};
+use crate::{connectivity::Connection, syncing::{IndexComparer, SourceOfTruth}};
 
 use super::ControlCommand;
 

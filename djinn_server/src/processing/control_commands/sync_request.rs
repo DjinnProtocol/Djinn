@@ -1,9 +1,9 @@
 use std::{collections::HashMap, error::Error};
 use async_trait::async_trait;
-use djinn_core_lib::data::packets::{ControlPacket, ControlPacketType, TransferDenyReason};
+use djinn_core_lib::{data::packets::{ControlPacket, ControlPacketType, TransferDenyReason}, jobs::{Job, JobType, JobStatus}};
 use tokio::{fs, time::sleep};
 
-use crate::{connectivity::Connection, CONFIG, jobs::{Job, JobType, JobStatus}};
+use crate::{connectivity::Connection, CONFIG};
 
 use super::ControlCommand;
 

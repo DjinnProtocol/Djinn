@@ -1,10 +1,10 @@
 use std::{error::Error, sync::Arc};
 
-use crate::{jobs::Job, processing::PacketHandler};
-use djinn_core_lib::data::packets::{
+use crate::{processing::PacketHandler};
+use djinn_core_lib::{data::packets::{
     packet::Packet,
     PacketReader,
-};
+}, jobs::Job};
 use tokio::{sync::Mutex, io::{BufReader, AsyncWriteExt, WriteHalf, ReadHalf}, net::TcpStream};
 use super::ConnectionData;
 

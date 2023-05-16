@@ -6,7 +6,6 @@ use lazy_static::lazy_static;
 mod connectivity;
 mod configuration;
 mod processing;
-mod jobs;
 mod syncing;
 
 #[macro_use] extern crate log;

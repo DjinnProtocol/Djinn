@@ -8,5 +8,6 @@ edition = "2021"
 [dependencies]
 async-trait = "0.1.66"
 djinn_core_lib = { path = "../djinn_core_lib" }
+filetime = "0.2.21"
 log = "0.4.17"
 tokio = { version = "1.27.0", features = ["full"] }

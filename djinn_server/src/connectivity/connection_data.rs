@@ -1,9 +1,8 @@
 use std::sync::Arc;
 
+use djinn_core_lib::jobs::Job;
 use tokio::{net::TcpStream, io::{ReadHalf, WriteHalf}, sync::Mutex};
 use uuid::Uuid;
-
-use crate::jobs::Job;
 
 pub struct ConnectionData {
     pub read_stream: Arc<Mutex<ReadHalf<TcpStream>>>,

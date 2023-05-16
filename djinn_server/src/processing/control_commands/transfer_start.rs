@@ -2,9 +2,10 @@ use std::error::Error;
 use async_trait::async_trait;
 use djinn_core_lib::data::packets::DataPacketGenerator;
 use djinn_core_lib::data::packets::{ControlPacket, packet::Packet};
+use djinn_core_lib::jobs::{JobStatus, JobType};
 use tokio::io::{BufWriter, AsyncWriteExt};
 
-use crate::{connectivity::Connection, CONFIG, jobs::{JobType, JobStatus}};
+use crate::{connectivity::Connection, CONFIG};
 
 use super::ControlCommand;
 
