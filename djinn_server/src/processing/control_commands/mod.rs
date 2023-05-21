@@ -10,3 +10,5 @@ mod sync_request;
 pub use sync_request::SyncRequestCommand;
 mod sync_index_response;
 pub use sync_index_response::SyncIndexResponseCommand;
+mod sync_index_update;
+pub use sync_index_update::SyncIndexUpdateCommand;

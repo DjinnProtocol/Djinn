@@ -48,6 +48,10 @@ impl IndexManager {
             let path_without_root = path_str.replace(&self.root, "/");
 
             if unwrapped_item.path().is_file() {
+                // Check if extension is .djinn_temp
+                if path_str.ends_with(".djinn_temp") {
+                    continue;
+                }
                 //Get the file size
                 let last_modified = unwrapped_item.metadata().await.unwrap().modified().unwrap();
                 let last_modified_unix = last_modified.duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();

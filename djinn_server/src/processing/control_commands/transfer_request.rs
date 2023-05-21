@@ -13,11 +13,12 @@ pub struct TransferRequestCommand {}
 impl ControlCommand for TransferRequestCommand {
     async fn execute(&self, connection: &mut Connection, packet: &ControlPacket) -> Result<(), Box<dyn Error>> {
         let path = packet.params.get("file_path").unwrap();
+        let direction = packet.params.get("direction").unwrap();
         let full_path = CONFIG.serving_directory.clone().unwrap() + "/" + path;
-
+        debug!("Transfer request for {} to {}", path, direction);
 
         //Check if file exists if download request
-        if !fs::metadata(&full_path).await.is_ok() {
+        if direction == "toClient" && !fs::metadata(&full_path).await.is_ok() {
             let mut params = HashMap::new();
             params.insert("reason".to_string(), TransferDenyReason::FileNotFound.to_string());
 
@@ -34,19 +35,22 @@ impl ControlCommand for TransferRequestCommand {
             id: job_id.clone(),
             job_type: JobType::Transfer,
             status: JobStatus::Pending,
-            params: packet.params.clone()
+            params: packet.params.clone(),
+            open_file: None
         };
 
         connection.add_job(job).await;
-
-        // Get modified time
-        let modified_time = fs::metadata(&full_path).await?.modified().unwrap().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
 
         //Send response
         let mut response = ControlPacket::new(ControlPacketType::TransferAck, HashMap::new());
         response.params.insert("job_id".to_string(), job_id.to_string());
         response.params.insert("transfer_id".to_string(), packet.params.get("transfer_id").unwrap().clone());
-        response.params.insert("modified_time".to_string(), modified_time.to_string());
+
+        if direction == "toClient" {
+            let modified_time = fs::metadata(&full_path).await?.modified().unwrap().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
+            response.params.insert("modified_time".to_string(), modified_time.to_string());
+        }
+
 
         connection.send_packet(response).await?;
 

@@ -27,21 +27,7 @@ impl FsPoller {
             let mut new_index_manager = IndexManager::new(self.path.clone());
             new_index_manager.build().await;
 
-            //Check if hashmaps are equal
-            let mut equal = false;
-
-            if new_index_manager.index.len() != index_manager.index.len() {
-                equal = false;
-            }
-
-            for(key, _) in index_manager.index.iter() {
-                if !new_index_manager.index.contains_key(key) {
-                    equal = false;
-                    break;
-                }
-            }
-
-            if !equal {
+            if index_manager.index != new_index_manager.index {
                 debug!("Index has changed, sending new index response");
                 //Send new index response
                 let mut params = HashMap::new();
@@ -52,7 +38,7 @@ impl FsPoller {
                     params.insert(key.clone(), value.to_string());
                 }
 
-                let mut packet = ControlPacket::new(ControlPacketType::SyncIndexResponse, params);
+                let mut packet = ControlPacket::new(ControlPacketType::SyncIndexUpdate, params);
 
                 packet.job_id = Some(self.job_id);
 
@@ -64,7 +50,6 @@ impl FsPoller {
                 }
 
                 let write_stream = write_stream_option.as_mut().unwrap();
-
 
                 write_stream.write_all(packet.to_buffer().as_slice()).await?;
                 write_stream.flush().await?;

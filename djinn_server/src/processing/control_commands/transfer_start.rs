@@ -1,9 +1,11 @@
 use std::error::Error;
+use std::sync::Arc;
 use async_trait::async_trait;
 use djinn_core_lib::data::packets::DataPacketGenerator;
 use djinn_core_lib::data::packets::{ControlPacket, packet::Packet};
-use djinn_core_lib::jobs::{JobStatus, JobType};
+use djinn_core_lib::jobs::{JobStatus, JobType, Job};
 use tokio::io::{BufWriter, AsyncWriteExt};
+use tokio::sync::Mutex;
 
 use crate::{connectivity::Connection, CONFIG};
 
@@ -18,8 +20,17 @@ impl ControlCommand for TransferStartCommand {
         let job_id = packet.params.get("job_id").unwrap().parse::<u32>().unwrap();
 
         // Get the job from the connection
-        let sync_job_arc = connection.get_job(job_id).await.unwrap().clone();
-        let job = sync_job_arc.lock().await;
+        let option_sync_job_arc: Option<Arc<Mutex<Job>>> = connection.get_job(job_id).await;
+
+        if option_sync_job_arc.is_none() {
+            return Err(Box::new(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Job does not exist",
+            )));
+        }
+
+        let mut job_arc = option_sync_job_arc.unwrap();
+        let mut job = job_arc.lock().await;
 
         // If the job is not a transfer job, return an error
         if !matches!(job.job_type, JobType::Transfer) {
@@ -36,6 +47,9 @@ impl ControlCommand for TransferStartCommand {
                 "Job is not in the pending state",
             )));
         }
+
+        // Set the job status to running
+        job.status = JobStatus::Running;
 
         // Get the file path from the job
         let file_path = job.params.get("file_path").unwrap();
@@ -60,6 +74,9 @@ impl ControlCommand for TransferStartCommand {
 
             // debug!("sent: {:?}", String::from_utf8(packet.data.clone()));
         }
+
+        // Set the job status to complete
+        job.status = JobStatus::Finished;
 
         write_stream.flush().await?;
 

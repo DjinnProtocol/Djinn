@@ -29,10 +29,13 @@ impl IndexComparer {
 
         //Changes from client perspective
         for (key, value) in &self.client_index {
-            //Check if key exists in server index
+            //Check if key exists in server index (file exists on server)
             if self.server_index.contains_key(key) {
                 //Check if value is the same
-                if self.server_index.get(key).unwrap() > value {
+                if self.server_index.get(key).unwrap() == value {
+                    //File is the same
+                    continue;
+                } else if self.server_index.get(key).unwrap() > value {
                     //Server has newer version
                     result.insert(key.to_string(), "GET".to_string());
                 } else {
@@ -83,7 +86,7 @@ mod tests {
         let comparer = IndexComparer::new(client_index, server_index, SourceOfTruth::Client);
         let result = comparer.compare();
 
-        assert_eq!(result.get("PUT").unwrap(), "test.txt");
+        assert_eq!(result.get("test.txt").unwrap(), "PUT");
     }
 
     #[test]
@@ -96,7 +99,7 @@ mod tests {
         let comparer = IndexComparer::new(client_index, server_index, SourceOfTruth::Client);
         let result = comparer.compare();
 
-        assert_eq!(result.get("SELF_DELETE").unwrap(), "test.txt");
+        assert_eq!(result.get("test.txt").unwrap(), "SELF_DELETE");
     }
 
     #[test]
@@ -109,7 +112,7 @@ mod tests {
         let comparer = IndexComparer::new(client_index, server_index, SourceOfTruth::Server);
         let result = comparer.compare();
 
-        assert_eq!(result.get("GET").unwrap(), "test.txt");
+        assert_eq!(result.get("test.txt").unwrap(), "GET");
     }
 
     #[test]
@@ -122,7 +125,7 @@ mod tests {
         let comparer = IndexComparer::new(client_index, server_index, SourceOfTruth::Server);
         let result = comparer.compare();
 
-        assert_eq!(result.get("DELETE").unwrap(), "test.txt");
+        assert_eq!(result.get("test.txt").unwrap(), "DELETE");
     }
 
     #[test]
@@ -136,7 +139,7 @@ mod tests {
         let comparer = IndexComparer::new(client_index, server_index, SourceOfTruth::Server);
         let result = comparer.compare();
 
-        assert_eq!(result.get("GET").unwrap(), "test.txt");
+        assert_eq!(result.get("test.txt").unwrap(), "GET");
     }
 
     #[test]
@@ -150,6 +153,21 @@ mod tests {
         let comparer = IndexComparer::new(client_index, server_index, SourceOfTruth::Server);
         let result = comparer.compare();
 
-        assert_eq!(result.get("GET").unwrap(), "test.txt");
+        assert_eq!(result.get("test.txt").unwrap(), "GET");
+    }
+
+    #[test]
+    fn test_client_same() {
+        let mut client_index = HashMap::new();
+        client_index.insert("test.txt".to_string(), 123);
+
+        let mut server_index = HashMap::new();
+        server_index.insert("test.txt".to_string(), 123);
+
+        let comparer = IndexComparer::new(client_index, server_index, SourceOfTruth::Server);
+        let result = comparer.compare();
+
+        // Check result empty
+        assert_eq!(result.len(), 0);
     }
 }

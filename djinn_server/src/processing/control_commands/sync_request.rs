@@ -35,7 +35,8 @@ impl ControlCommand for SyncRequestCommand {
             id: job_id.clone(),
             job_type: JobType::Sync,
             status: JobStatus::Pending,
-            params: packet.params.clone()
+            params: packet.params.clone(),
+            open_file: None
         };
 
         connection.add_job(job).await;

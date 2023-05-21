@@ -1,22 +1,24 @@
 use std::collections::HashMap;
 
-#[derive(Clone)]
+use tokio::fs::File;
+
+
 pub enum JobType {
     Transfer,
     Sync
 }
 
-#[derive(Clone)]
+
 pub enum JobStatus {
     Pending,
     Running,
     Finished
 }
 
-#[derive(Clone)]
 pub struct Job {
     pub id: u32,
     pub job_type: JobType,
     pub status: JobStatus,
-    pub params: HashMap<String, String>
+    pub params: HashMap<String, String>,
+    pub open_file: Option<File>
 }
