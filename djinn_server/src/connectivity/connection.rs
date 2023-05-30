@@ -45,12 +45,12 @@ impl Connection {
 
     pub async fn listen(&mut self) {
         // Handle incoming streams
+        let mut packet_reader = PacketReader::new();
         loop {
             let data = self.data.lock().await;
             let read_stream_arc = data.read_stream.clone();
             let mut read_stream = read_stream_arc.lock().await;
             let mut reader = BufReader::new(&mut *read_stream);
-            let mut packet_reader = PacketReader::new();
             let packets = packet_reader.read(&mut reader, None).await;
             std::mem::drop(data);
 

@@ -22,12 +22,12 @@ impl PacketReader {
 
         while packets.len() == 0 {
             let mut temp_buffer = [0; 65536];
-            debug!("Started reading");
-            debug!("Packet's processed: {}", self.packetsProcessed);
-            debug!("reader buffer size: {}", reader.buffer().len());
+            // debug!("Started reading");
+            // debug!("Packet's processed: {}", self.packetsProcessed);
+            // debug!("reader buffer size: {}", reader.buffer().len());
             let bytes_read = reader.read(&mut temp_buffer).await.unwrap();
 
-            debug!("Bytes read: {}", bytes_read);
+            // debug!("JV Bytes read: {}", bytes_read);
 
             if bytes_read == 0 {
                 return packets;
@@ -37,9 +37,12 @@ impl PacketReader {
             self.buffer.extend_from_slice(&temp_buffer[0..bytes_read]);
 
             //If buffer has more than 4 bytes and more packets need to be read
+            // debug!("Hello world");
             while self.buffer.len() > 4 && (max_packets.is_none() || packets.len() < max_packets.unwrap()) {
+                // debug!("Hello world 2");
                 //Check if packet is complete
                 let packet_length = get_packet_length(&self.buffer) as usize;
+                // debug!("Packet length: {}", packet_length);
 
                 //Check if packet can be extracted
                 if packet_length <= self.buffer.len() {
@@ -70,11 +73,14 @@ impl PacketReader {
             let mut temp_buffer = [0; 65536];
             let bytes_read = reader.read(&mut temp_buffer).await.unwrap();
 
-            debug!("Bytes read: {}", bytes_read);
+            // debug!("Buffer size1: {}", self.buffer.len());
+            // debug!("JM Bytes read: {}", bytes_read);
 
             if bytes_read == 0 {
                 return packets;
             }
+
+
 
             //Add to self buffer
             self.buffer.extend_from_slice(&temp_buffer[0..bytes_read]);
@@ -82,7 +88,11 @@ impl PacketReader {
             //If buffer has more than 4 bytes and more packets need to be read
             while self.buffer.len() > 4 && (max_packets.is_none() || packets.len() < max_packets.unwrap()) {
                 //Check if packet is complete
+                // debug!("Buffer size2: {}", self.buffer.len());
                 let packet_length = get_packet_length(&self.buffer) as usize;
+                // debug!("Packet length: {}", packet_length);
+
+                            //TODO: Find out why the packet lenght is zero here eventhough the buffer is empty and something gets in
 
                 //Check if packet can be extracted
                 if packet_length <= self.buffer.len() {

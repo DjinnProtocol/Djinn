@@ -268,6 +268,7 @@ impl SyncHandler {
             let write_stream = option_write_stream.as_mut().unwrap();
 
             let buffer = &packet.to_buffer();
+            // debug!("Sending length: {}", buffer.len());
             write_stream.write_all(&buffer).await.expect("Failed to write to stream")
         }
 
@@ -278,8 +279,8 @@ impl SyncHandler {
         // Get the transfer by job id
         let job_id = packet.job_id;
         let mut option_arc_transfer = self.get_transfer_by_job_id(job_id).await;
-                let mut transfer_arc = option_arc_transfer.as_mut().unwrap();
-                let mut transfer = transfer_arc.lock().await;
+        let mut transfer_arc = option_arc_transfer.as_mut().unwrap();
+        let mut transfer = transfer_arc.lock().await;
 
         // Start transfer if accepted
         if matches!(transfer.status, TransferStatus::Accepted) {
@@ -306,11 +307,14 @@ impl SyncHandler {
                 transfer.status = TransferStatus::Completed;
                 // Move file and set modified time
                 let full_path = self.target.clone() + "/" + &transfer.file_path;
+
+                let file_time = FileTime::from_unix_time(transfer.original_modified_time as i64, 0);
+                set_file_mtime(full_path.clone() + ".djinn_temp", file_time).unwrap();
+
                 rename(full_path.clone() + ".djinn_temp", &full_path)
                     .await
                     .unwrap();
-                let file_time = FileTime::from_unix_time(transfer.original_modified_time as i64, 0);
-                set_file_mtime(&full_path, file_time).unwrap();
+
             }
         } else {
             panic!("Transfer data received for transfer that is not in progress")
