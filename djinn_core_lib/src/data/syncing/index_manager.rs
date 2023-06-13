@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, time::{SystemTime, UNIX_EPOCH}};
 
 use async_recursion::async_recursion;
 use tokio::fs;
@@ -32,7 +32,18 @@ impl IndexManager {
     }
 
     pub async fn build(&mut self) {
-        self.index = self.build_index(self.root.clone()).await;
+        let mut index = self.build_index(self.root.clone()).await;
+        // Save current timestamp
+        let current_time = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("Failed to get system time");
+
+        let unix_timestamp = current_time.as_secs();
+
+        // Add the index to the index manager
+        index.insert("#timestamp".to_string(), unix_timestamp as usize);
+
+        self.index = index;
     }
 
     #[async_recursion]
@@ -88,8 +99,8 @@ mod tests {
         let test_sub_file = "/tmp/test_data/test_sub_dir/test_sub_file.txt";
 
         //Create the test directory
-        fs::create_dir(test_dir).await.unwrap();
-        fs::create_dir(test_sub_dir).await.unwrap();
+        fs::create_dir_all(test_dir).await.unwrap();
+        fs::create_dir_all(test_sub_dir).await.unwrap();
         fs::write(test_file, "test").await.unwrap();
         fs::write(test_sub_file, "test").await.unwrap();
 
@@ -100,8 +111,9 @@ mod tests {
         let mut expected_index = HashMap::new();
         let current_unix = SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() as usize;
 
-        expected_index.insert(test_file.replace(test_dir, "/"), current_unix);
-        expected_index.insert(test_sub_file.replace(test_dir, "/"), current_unix);
+        expected_index.insert(test_file.replace(test_dir, ""), current_unix);
+        expected_index.insert(test_sub_file.replace(test_dir, ""), current_unix);
+        expected_index.insert("#timestamp".to_string(), current_unix);
 
         assert_eq!(index_manager.index, expected_index);
 

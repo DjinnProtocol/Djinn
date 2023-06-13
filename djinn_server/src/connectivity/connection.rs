@@ -1,12 +1,13 @@
 use std::{error::Error, sync::Arc};
 
-use crate::{processing::PacketHandler};
+use crate::{processing::{PacketHandler, control_commands::process_client_index}, syncing::SourceOfTruth};
 use djinn_core_lib::{data::packets::{
     packet::Packet,
     PacketReader,
-}, jobs::Job};
-use tokio::{sync::Mutex, io::{BufReader, AsyncWriteExt, WriteHalf, ReadHalf}, net::TcpStream};
-use super::ConnectionData;
+}, jobs::{Job, JobType}};
+use serde::__private::de;
+use tokio::{sync::{Mutex, broadcast}, io::{BufReader, AsyncWriteExt, WriteHalf, ReadHalf}, net::TcpStream};
+use super::{ConnectionData, ConnectionUpdate, ConnectionUpdateType};
 
 pub struct Connection {
     pub data: Arc<Mutex<ConnectionData>>,
@@ -44,15 +45,23 @@ impl Connection {
     }
 
     pub async fn listen(&mut self) {
+        let data_arc = self.data.clone();
+        let data = data_arc.lock().await;
+        let read_stream_arc = data.read_stream.clone();
+        drop(data);
+
+        // Listen for broadcast in separate async task
+        tokio::spawn(async move {
+            let mut new_connection = Connection::new(data_arc);
+            new_connection.listen_for_broadcasts().await;
+        });
+
         // Handle incoming streams
         let mut packet_reader = PacketReader::new();
         loop {
-            let data = self.data.lock().await;
-            let read_stream_arc = data.read_stream.clone();
             let mut read_stream = read_stream_arc.lock().await;
             let mut reader = BufReader::new(&mut *read_stream);
             let packets = packet_reader.read(&mut reader, None).await;
-            std::mem::drop(data);
 
             if packets.len() == 0 {
                 // Connection closed
@@ -95,5 +104,60 @@ impl Connection {
     pub async fn get_read_stream(&mut self) -> Arc<Mutex<ReadHalf<TcpStream>>> {
         let data = self.data.lock().await;
         data.read_stream.clone()
+    }
+
+    pub async fn listen_for_broadcasts(&mut self) {
+        // Lock data to get broadcast receiver
+        let data = self.data.lock().await;
+        let broadcast_receiver_arc = data.connections_broadcast_receiver.clone();
+        drop(data);
+
+        loop {
+            debug!("Waiting for broadcast");
+            let mut broadcast_receiver = broadcast_receiver_arc.lock().await;
+            let broadcast = broadcast_receiver.recv().await;
+            drop(broadcast_receiver);
+            debug!("Received broadcast");
+
+            match broadcast {
+                Ok(broadcast) => {
+                    self.handle_connection_update(broadcast).await;
+                },
+                Err(_) => {
+                    // Connection closed
+                    debug!("Connection closed");
+                    break;
+                }
+            }
+        }
+    }
+
+    pub async fn handle_connection_update(&mut self, connection_update: ConnectionUpdate) {
+       match connection_update.update_type {
+          ConnectionUpdateType::ServerIndexUpdated => {
+            let mut data = self.data.lock().await;
+            if data.uuid == connection_update.connection_uuid {
+                // Ignore own broadcast
+                return;
+            }
+            //Find active sync job
+            let mut arc_sync_job = None;
+            for job in &mut data.jobs {
+                let unlocked_job = job.lock().await;
+                if matches!(unlocked_job.job_type, JobType::Sync) {
+                    arc_sync_job = Some(job.clone());
+                    break;
+                }
+            }
+
+            let last_index = data.last_index.clone();
+            drop(data);
+
+            if arc_sync_job.is_some() {
+                debug!("Processing client index");
+                process_client_index(self, last_index, arc_sync_job.unwrap(), SourceOfTruth::Server).await;
+            }
+          },
+       }
     }
 }

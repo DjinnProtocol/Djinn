@@ -1,10 +1,20 @@
 use std::{collections::HashMap, error::Error};
 
 use async_trait::async_trait;
-use djinn_core_lib::{data::{packets::{ControlPacket, ControlPacketType}, syncing::IndexManager}, jobs::JobType};
+use djinn_core_lib::{
+    data::{
+        packets::{ControlPacket, ControlPacketType},
+        syncing::IndexManager,
+    },
+    jobs::JobType,
+};
 use tokio::fs;
 
-use crate::{connectivity::Connection, syncing::{IndexComparer, SourceOfTruth}};
+use crate::{
+    connectivity::Connection,
+    syncing::{IndexComparer, SourceOfTruth},
+    SERVER_DELETES,
+};
 
 use super::ControlCommand;
 
@@ -14,20 +24,23 @@ pub struct SyncIndexResponseCommand {}
 
 #[async_trait]
 impl ControlCommand for SyncIndexResponseCommand {
-    async fn execute(&self, connection: &mut Connection, packet: &ControlPacket) -> Result<(), Box<dyn Error>> {
+    async fn execute(
+        &self,
+        connection: &mut Connection,
+        packet: &ControlPacket,
+    ) -> Result<(), Box<dyn Error>> {
         //Check if job id exists
         if packet.job_id.is_none() {
             error!("SyncIndexResponse packet does not contain a job id");
-            return Ok(())
+            return Ok(());
         }
 
         //Check if sync exists
         let possible_sync_job = connection.get_job(packet.job_id.unwrap()).await;
 
-
         if possible_sync_job.is_none() {
             error!("SyncIndexResponse packet does not contain a valid job id");
-            return Ok(())
+            return Ok(());
         }
 
         //Check if sync is a sync job
@@ -36,13 +49,12 @@ impl ControlCommand for SyncIndexResponseCommand {
 
         if !matches!(sync_job.job_type, JobType::Sync) {
             error!("SyncIndexResponse packet job id does not belong to a sync job");
-            return Ok(())
+            return Ok(());
         }
 
         // Get server index
         let path = sync_job.params.get("path").unwrap();
         let full_path = CONFIG.serving_directory.clone().unwrap() + "/" + path;
-
 
         let mut server_index_manager = IndexManager::new(full_path.clone());
         server_index_manager.build().await;
@@ -55,8 +67,16 @@ impl ControlCommand for SyncIndexResponseCommand {
         }
 
         // Get index comparer
-        debug!("Server: {:?}. Client: {:?}", server_index_manager.index, client_index);
-        let index_comparer = IndexComparer::new(client_index, server_index_manager.index, SourceOfTruth::Server);
+        debug!(
+            "Server: {:?}. Client: {:?}",
+            server_index_manager.index, client_index
+        );
+        let index_comparer = IndexComparer::new(
+            client_index.clone(),
+            server_index_manager.index,
+            SourceOfTruth::Server,
+            SERVER_DELETES.lock().await.clone(),
+        );
         let mut changes = index_comparer.compare();
         debug!("Changes: {:?}", changes);
         let immutable_changes = changes.clone();
@@ -79,6 +99,11 @@ impl ControlCommand for SyncIndexResponseCommand {
         connection.send_packet(response).await.unwrap();
 
         connection.flush().await;
+
+        // Save in last index in connection data
+        let mut data = connection.data.lock().await;
+        data.last_index = client_index.clone();
+        drop(data);
 
         Ok(())
     }

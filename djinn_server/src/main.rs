@@ -1,7 +1,10 @@
 extern crate pretty_env_logger;
+use std::collections::HashMap;
+
 use configuration::application_config::ApplicationConfig;
 use connectivity::Listener;
 use lazy_static::lazy_static;
+use tokio::sync::Mutex;
 
 mod connectivity;
 mod configuration;
@@ -13,6 +16,7 @@ mod syncing;
 
 lazy_static! {
     static ref CONFIG: ApplicationConfig = ApplicationConfig::build();
+    static ref SERVER_DELETES: Mutex<HashMap<String, usize>> = Mutex::new(HashMap::new());
 }
 
 

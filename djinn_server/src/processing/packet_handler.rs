@@ -3,7 +3,7 @@ use filetime::{FileTime, set_file_mtime};
 use tokio::fs::{File, rename};
 use tokio::io::AsyncWriteExt;
 
-use crate::{connectivity::Connection, CONFIG};
+use crate::{connectivity::{Connection, ConnectionUpdate}, CONFIG};
 
 use super::control_commands::{EchoRequestCommand, ControlCommand, TransferRequestCommand, TransferStartCommand, SyncIndexResponseCommand, SyncRequestCommand, SyncIndexUpdateCommand};
 
@@ -113,6 +113,10 @@ impl PacketHandler {
                 let modified_time = modified_time.parse::<u64>().unwrap();
                 let file_time = FileTime::from_unix_time(modified_time as i64, 0);
                 set_file_mtime(&full_path, file_time).unwrap();
+                // Send connection update to all connections
+                let data = connection.data.lock().await;
+                let sender = &data.connections_broadcast_sender.lock().await;
+                sender.send(ConnectionUpdate::new(data.uuid.clone())).expect("Failed to send connection update");
             }
         }
     }

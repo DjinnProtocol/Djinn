@@ -12,3 +12,4 @@ mod sync_index_response;
 pub use sync_index_response::SyncIndexResponseCommand;
 mod sync_index_update;
 pub use sync_index_update::SyncIndexUpdateCommand;
+pub use sync_index_update::process_client_index;

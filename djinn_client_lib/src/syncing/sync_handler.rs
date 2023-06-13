@@ -1,4 +1,4 @@
-use std::{collections::HashMap, error::Error, path::Path, sync::Arc};
+use std::{collections::HashMap, error::Error, path::Path, sync::Arc, os::unix::process::parent_id};
 
 use djinn_core_lib::{
     data::{
@@ -32,6 +32,8 @@ pub struct SyncHandler {
     pub polling_ready: bool,
     pub transfers: Vec<Arc<Mutex<Transfer>>>,
     pub next_transfer_id: u32,
+    pub is_syncing: Arc<Mutex<bool>>,
+    pub current_sync_update_checklist: HashMap<String, bool>,
 }
 
 impl SyncHandler {
@@ -43,6 +45,8 @@ impl SyncHandler {
             polling_ready: false,
             transfers: vec![],
             next_transfer_id: 0,
+            is_syncing: Arc::new(Mutex::new(false)),
+            current_sync_update_checklist: HashMap::new(),
         }
     }
 
@@ -156,10 +160,11 @@ impl SyncHandler {
                 let new_target = self.target.clone();
                 let new_job_id = self.job_id.unwrap().clone();
                 let write_stream_arc = connection.write_stream.clone();
+                let new_is_syncing = self.is_syncing.clone();
 
                 tokio::spawn(async move {
                     let mut fs_poller = FsPoller::new(new_target, new_job_id);
-                    fs_poller.poll(write_stream_arc).await.unwrap();
+                    fs_poller.poll(write_stream_arc, new_is_syncing).await.unwrap();
                 });
             }
             ControlPacketType::SyncDeny => {
@@ -273,6 +278,10 @@ impl SyncHandler {
         }
 
         connection.flush().await.expect("Failed to flush connection");
+
+        // Update sync
+        self.write_off_sync_update_checklist(transfer.file_path.clone())
+            .await;
     }
 
     pub async fn handle_data_packet(&mut self, packet: &DataPacket, connection: &Connection) {
@@ -315,6 +324,8 @@ impl SyncHandler {
                     .await
                     .unwrap();
 
+                // Update checklist
+                self.write_off_sync_update_checklist(transfer.file_path.clone()).await;
             }
         } else {
             panic!("Transfer data received for transfer that is not in progress")
@@ -324,6 +335,16 @@ impl SyncHandler {
     pub async fn handle_sync_update(&mut self, packet: &ControlPacket, connection: &Connection) {
         info!("Sync update received");
         debug!("Sync update packet: {:?}", packet.params);
+
+        // Deny update if already syncing
+        let is_syncing = self.is_syncing.lock().await;
+        if *is_syncing {
+            return;
+        }
+        drop(is_syncing);
+
+        self.create_sync_update_checklist(packet.params.clone()).await;
+
         // Loop through hashmap params
         for (key, value) in packet.params.iter() {
             let key = key.clone();
@@ -340,6 +361,8 @@ impl SyncHandler {
                 remove_file(self.target.clone() + "/" + &key)
                     .await
                     .expect("Failed to delete file");
+
+                self.write_off_sync_update_checklist(key.clone()).await;
             } else if value == "PUT" {
                 // Put the file on the client
                 info!("Putting file {}", key);
@@ -348,6 +371,50 @@ impl SyncHandler {
                 //Log type
                 debug!("Unknown sync update type: {}", value);
             }
+        }
+    }
+
+
+    pub async fn create_sync_update_checklist(&mut self, sync_update: HashMap<String, String>) {
+
+        let mut new_hashmap: HashMap<String, bool> = HashMap::new();
+
+        for (key, value) in sync_update.iter() {
+            new_hashmap.insert(key.clone(), false);
+        }
+
+        self.current_sync_update_checklist = new_hashmap;
+
+        debug!("Created sync update checklist: {:?}", self.current_sync_update_checklist);
+
+        // If list is not empty, set syncing to true
+        if !self.current_sync_update_checklist.is_empty() {
+            let is_syncing_arc = self.is_syncing.clone();
+            let mut is_syncing = is_syncing_arc.lock().await;
+            *is_syncing = true;
+        }
+    }
+
+    pub async fn write_off_sync_update_checklist(&mut self, path: String) {
+        self.current_sync_update_checklist.insert(path, true);
+
+        // Check if all values are true
+        let mut all_true = true;
+        for (_, value) in self.current_sync_update_checklist.iter() {
+            if !value {
+                all_true = false;
+            }
+        }
+
+        if all_true {
+            // Log checklist
+            debug!("Sync update checklist: {:?}", self.current_sync_update_checklist);
+            // Set sync update to false
+            let is_syncing_arc = self.is_syncing.clone();
+            let mut is_syncing = is_syncing_arc.lock().await;
+            *is_syncing = false;
+
+            self.current_sync_update_checklist = HashMap::new();
         }
     }
 

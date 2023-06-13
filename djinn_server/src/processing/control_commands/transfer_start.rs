@@ -81,6 +81,7 @@ impl ControlCommand for TransferStartCommand {
         write_stream.flush().await?;
 
         debug!("Done sending data");
+
         return Ok(());
     }
 }

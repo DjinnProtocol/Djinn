@@ -5,33 +5,59 @@ use tokio::{time::sleep, sync::Mutex, io::{WriteHalf, BufWriter, AsyncWriteExt},
 
 pub struct FsPoller {
     pub path: String,
-    pub job_id: u32
+    pub job_id: u32,
+    pub was_just_syncing: bool
 }
 
 impl FsPoller {
     pub fn new(path: String, job_id: u32) -> FsPoller {
         FsPoller {
             path,
-            job_id
+            job_id,
+            was_just_syncing: false
         }
     }
 
-    pub async fn poll(&mut self, write_stream_arc: Arc<Mutex<Option<WriteHalf<TcpStream>>>>) -> Result<(), Box<dyn Error>> {
+    pub async fn poll(&mut self, write_stream_arc: Arc<Mutex<Option<WriteHalf<TcpStream>>>>, is_syncing_arc: Arc<Mutex<bool>>) -> Result<(), Box<dyn Error>> {
         let mut index_manager = IndexManager::new(self.path.clone());
         index_manager.build().await;
 
         loop {
-            debug!("Checking");
             sleep(Duration::from_secs(1)).await;
+            //Check if we are syncing
+            let is_syncing = is_syncing_arc.lock().await;
+            debug!("Is syncing: {}", *is_syncing);
+            if *is_syncing {
+                debug!("Is syncing");
+                self.was_just_syncing = true;
+                continue;
+            }
+
+            debug!("Checking");
+
+
             //Check if the index has changed
             let mut new_index_manager = IndexManager::new(self.path.clone());
             new_index_manager.build().await;
 
-            if index_manager.index != new_index_manager.index {
+            // Remove timestamps from the index
+            let mut index_without_timestamps = index_manager.index.clone();
+            let mut new_index_without_timestamps = new_index_manager.index.clone();
+            index_without_timestamps.remove("#timestamp");
+            new_index_without_timestamps.remove("#timestamp");
+
+            if index_without_timestamps != new_index_without_timestamps || self.was_just_syncing {
                 debug!("Index has changed, sending new index response");
                 //Send new index response
                 let mut params = HashMap::new();
-                let index = new_index_manager.index.clone();
+                let mut index = new_index_manager.index.clone();
+
+                // Add deleted files with timestamp 0 by looping through the old index
+                for (key, _) in index_without_timestamps.iter() {
+                    if !index.contains_key(key) {
+                       index.insert(key.clone(), 0);
+                    }
+                }
 
                 //Stringify the timestamps
                 for (key, value) in index.iter() {
@@ -55,7 +81,13 @@ impl FsPoller {
                 write_stream.flush().await?;
 
                 //Update index manager
-                index_manager = new_index_manager;
+                if self.was_just_syncing == false {
+                    index_manager = new_index_manager;
+                }
+            }
+
+            if self.was_just_syncing {
+                self.was_just_syncing = false;
             }
 
             debug!("Done")
