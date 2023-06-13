@@ -2,7 +2,8 @@
 FROM rust:1.67.0 AS builder
 COPY . .
 WORKDIR /djinn_server
-RUN cargo build --release
+RUN rustup target add x86_64-unknown-linux-musl
+RUN cargo build --release --target x86_64-unknown-linux-musl
 RUN echo "serving_directory: /files" > config.yaml
 
 FROM alpine:latest
@@ -15,4 +16,4 @@ COPY --from=builder /djinn_server/target/release/djinn_server .
 COPY --from=builder /djinn_server/config.yaml .
 RUN mkdir files
 
-CMD ["./djinn_server"]
+CMD /djinn_server
