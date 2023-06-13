@@ -6,6 +6,6 @@ RUN cargo build --release
 
 FROM gcr.io/distroless/cc
 COPY --from=builder /djinn_server/target/release/djinn_server /
-RUN echo "serving_directory: /files" > /djinn_server/config.yaml
+RUN echo "serving_directory: /files" > config.yaml
 RUN mkdir /files
 CMD ["./djinn_server"]
