@@ -1,4 +1,3 @@
 /target
 config.yaml
-files/**
-files**/**
+files2/**
