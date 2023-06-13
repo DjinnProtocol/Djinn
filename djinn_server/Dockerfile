@@ -5,6 +5,8 @@ WORKDIR /djinn_server
 RUN rustup target add x86_64-unknown-linux-musl
 RUN cargo build --release --target x86_64-unknown-linux-musl
 RUN echo "serving_directory: /files" > config.yaml
+RUN pwd
+RUN ls -lr target/release
 
 FROM alpine:latest
 
@@ -12,7 +14,7 @@ FROM alpine:latest
 RUN apk add --no-cache tzdata
 ENV TZ=Europe/Amsterdam
 
-COPY --from=builder /djinn_server/target/release/djinn_server .
+COPY --from=builder /djinn_server/target/x86_64-unknown-linux-musl/release/djinn_server .
 COPY --from=builder /djinn_server/config.yaml .
 RUN mkdir files
 
