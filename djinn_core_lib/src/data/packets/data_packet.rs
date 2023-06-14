@@ -1,4 +1,4 @@
-use std::{collections::HashMap, any::Any};
+use std::any::Any;
 
 use super::{PacketType, packet::Packet};
 

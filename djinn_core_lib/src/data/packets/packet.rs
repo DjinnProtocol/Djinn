@@ -1,7 +1,5 @@
 use std::{any::Any, collections::HashMap};
 
-use crate::data;
-
 use super::{PacketType, ControlPacket, DataPacket, ControlPacketType};
 
 pub trait Packet: Send + Sync {

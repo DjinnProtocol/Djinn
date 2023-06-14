@@ -1,10 +1,9 @@
 use std::{
     fs::File,
-    io::{BufReader, Bytes, Read},
+    io::{BufReader, Read},
 };
 
 use super::DataPacket;
-
 
 pub struct DataPacketGenerator {
     job_id: u32,
@@ -22,7 +21,6 @@ impl DataPacketGenerator {
         DataPacketGeneratorIterator::new(self.job_id, buf_reader)
     }
 }
-
 
 pub struct DataPacketGeneratorIterator {
     job_id: u32,
@@ -97,10 +95,7 @@ impl DataPacketGeneratorIterator {
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        env,
-        io::{Read, Write},
-    };
+    use std::{env, io::Write};
 
     use super::*;
 

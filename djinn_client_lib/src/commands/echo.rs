@@ -1,6 +1,6 @@
 use std::{collections::HashMap, error::Error};
 
-use djinn_core_lib::data::packets::{packet::Packet, ControlPacket, ControlPacketType, PacketType};
+use djinn_core_lib::data::packets::{ControlPacket, ControlPacketType, PacketType};
 
 use crate::connectivity::Connection;
 
@@ -12,22 +12,16 @@ impl EchoCommand {
     }
 
     pub async fn execute(&self, connection: &mut Connection) -> Result<(), Box<dyn Error>> {
-        println!("Executing echo command");
         // Create packet
         let packet = ControlPacket::new(ControlPacketType::EchoRequest, HashMap::new());
+
         // Send packet
         let start = std::time::Instant::now();
-        println!("Sending echo packet");
         connection.send_packet(packet).await?;
         connection.flush().await?;
-        println!("Send echo packet");
-
-        println!("Sent echo request");
 
         // Wait for response
         let response_packet = connection.read_next_packet().await?.unwrap();
-
-        debug!("Received echo response");
 
         if !matches!(response_packet.get_packet_type(), PacketType::Control) {
             return Err(Box::new(std::io::Error::new(
@@ -53,7 +47,10 @@ impl EchoCommand {
 
         let end = std::time::Instant::now();
 
-        println!("Server responded in {}ms", end.duration_since(start).as_millis());
+        println!(
+            "Server responded in {}ms",
+            end.duration_since(start).as_millis()
+        );
 
         Ok(())
     }

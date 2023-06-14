@@ -1,28 +1,17 @@
-use std::{collections::HashMap, error::Error, path::Path, sync::Arc};
+use std::{collections::HashMap, error::Error, sync::Arc};
 
-use djinn_core_lib::{
-    data::{
-        packets::{packet::Packet, ControlPacket, ControlPacketType, DataPacket, PacketType, DataPacketGenerator},
-        syncing::IndexManager,
-    }
-};
-use filetime::{set_file_mtime, FileTime};
+use djinn_core_lib::data::packets::{ControlPacket, ControlPacketType};
+
 use tokio::{
-    fs::{create_dir_all, rename, File, remove_file, self},
-    io::{AsyncWriteExt, BufReader, ReadHalf},
+    fs::remove_file,
+    io::{BufReader, ReadHalf},
     net::TcpStream,
-    sync::Mutex
+    sync::Mutex,
 };
 
-use crate::{
-    connectivity::Connection,
-    syncing::{
-        fs_poller::FsPoller,
-        TransferStatus,
-    },
-};
+use crate::connectivity::Connection;
 
-use super::{Transfer, TransferDirection, PacketHandler, TransferHandler};
+use super::{PacketHandler, Transfer, TransferHandler};
 
 pub struct SyncManager {
     pub path: String,
@@ -32,7 +21,7 @@ pub struct SyncManager {
     pub transfers: Vec<Arc<Mutex<Transfer>>>,
     pub next_transfer_id: u32,
     pub is_syncing: Arc<Mutex<bool>>,
-    pub current_sync_update_checklist: HashMap<String, bool>
+    pub current_sync_update_checklist: HashMap<String, bool>,
 }
 
 impl SyncManager {
@@ -45,7 +34,7 @@ impl SyncManager {
             transfers: vec![],
             next_transfer_id: 0,
             is_syncing: Arc::new(Mutex::new(false)),
-            current_sync_update_checklist: HashMap::new()
+            current_sync_update_checklist: HashMap::new(),
         }
     }
 
@@ -90,7 +79,9 @@ impl SyncManager {
 
             // Handle packets
             for packet in packets {
-                packet_handler.handle_boxed_packet(self, packet, &connection).await;
+                packet_handler
+                    .handle_boxed_packet(self, packet, &connection)
+                    .await;
             }
         }
 
@@ -110,7 +101,8 @@ impl SyncManager {
         }
         drop(is_syncing);
 
-        self.create_sync_update_checklist(packet.params.clone()).await;
+        self.create_sync_update_checklist(packet.params.clone())
+            .await;
 
         // Loop through hashmap params
         for (key, value) in packet.params.iter() {
@@ -120,7 +112,9 @@ impl SyncManager {
             if value == "GET" {
                 // Get the file from the client
                 info!("Getting file {}", key);
-                transfer_handler.start_get_file(self, key, &connection).await;
+                transfer_handler
+                    .start_get_file(self, key, &connection)
+                    .await;
             } else if value == "DELETE" {
                 // Delete the file from the client
                 info!("Deleting file {}", key);
@@ -133,7 +127,9 @@ impl SyncManager {
             } else if value == "PUT" {
                 // Put the file on the client
                 info!("Putting file {}", key);
-                transfer_handler.start_put_file(self, key, &connection).await;
+                transfer_handler
+                    .start_put_file(self, key, &connection)
+                    .await;
             } else {
                 //Log type
                 debug!("Unknown sync update type: {}", value);
@@ -141,18 +137,19 @@ impl SyncManager {
         }
     }
 
-
     pub async fn create_sync_update_checklist(&mut self, sync_update: HashMap<String, String>) {
-
         let mut new_hashmap: HashMap<String, bool> = HashMap::new();
 
-        for (key, value) in sync_update.iter() {
+        for (key, _) in sync_update.iter() {
             new_hashmap.insert(key.clone(), false);
         }
 
         self.current_sync_update_checklist = new_hashmap;
 
-        debug!("Created sync update checklist: {:?}", self.current_sync_update_checklist);
+        debug!(
+            "Created sync update checklist: {:?}",
+            self.current_sync_update_checklist
+        );
 
         // If list is not empty, set syncing to true
         if !self.current_sync_update_checklist.is_empty() {
@@ -175,7 +172,10 @@ impl SyncManager {
 
         if all_true {
             // Log checklist
-            debug!("Sync update checklist: {:?}", self.current_sync_update_checklist);
+            debug!(
+                "Sync update checklist: {:?}",
+                self.current_sync_update_checklist
+            );
             // Set sync update to false
             let is_syncing_arc = self.is_syncing.clone();
             let mut is_syncing = is_syncing_arc.lock().await;
@@ -189,7 +189,7 @@ impl SyncManager {
         for transfer in &mut self.transfers {
             let unlocked_transfer = transfer.lock().await;
             if unlocked_transfer.id == transfer_id {
-                return Some(transfer.clone())
+                return Some(transfer.clone());
             }
         }
 
@@ -200,7 +200,7 @@ impl SyncManager {
         for transfer in &mut self.transfers {
             let unlocked_transfer = transfer.lock().await;
             if unlocked_transfer.job_id == job_id {
-                return Some(transfer.clone())
+                return Some(transfer.clone());
             }
         }
 

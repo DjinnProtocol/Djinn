@@ -5,14 +5,14 @@ use crate::data::packets::packet::{deserialize_packet, get_packet_length};
 use super::packet::Packet;
 
 pub struct PacketReader {
-    packetsProcessed: usize,
+    packets_processed: usize,
     buffer: Vec<u8>
 }
 
 impl PacketReader {
     pub fn new() -> PacketReader {
         return PacketReader {
-            packetsProcessed: 0,
+            packets_processed: 0,
             buffer: Vec::with_capacity(131072)
         };
     }
@@ -53,7 +53,7 @@ impl PacketReader {
                     //Remove packet from buffer
                     self.buffer.drain(0..packet_length);
 
-                    self.packetsProcessed += 1;
+                    self.packets_processed += 1;
 
                     //Add packet to packets
                     packets.push(packet);

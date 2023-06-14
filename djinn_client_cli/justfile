@@ -6,6 +6,12 @@ put FILENAME:
     cargo build --release && RUST_LOG=DEBUG ../target/release/djinn_client_cli --host 127.0.0.1 --port 7777 put -f {{FILENAME}} -d .
 sync:
     cargo build --release && RUST_LOG=DEBUG ../target/release/djinn_client_cli --host 127.0.0.1 --port 7777 sync -p "/" -t "./files"
+syncpc:
+    cargo build --release && RUST_LOG=DEBUG ../target/release/djinn_client_cli --host 192.168.1.124 --port 7777 sync -p "/" -t "./files"
+syncserver:
+    cargo build --release && RUST_LOG=DEBUG ../target/release/djinn_client_cli --host 185.197.194.56 --port 7777 sync -p "/" -t "./files"
+syncserver2:
+    cargo build --release && RUST_LOG=DEBUG ../target/release/djinn_client_cli --host 185.197.194.56 --port 7777 sync -p "/" -t "./files2"
 sync2:
     cargo build --release && RUST_LOG=DEBUG ../target/release/djinn_client_cli --host 127.0.0.1 --port 7777 sync -p "/" -t "./files2"
 sync3:

@@ -35,7 +35,7 @@ impl PacketHandler {
                 let data_packet: &DataPacket =
                     packet_ref.as_any().downcast_ref::<DataPacket>().unwrap();
 
-                self.handle_data_packet(sync_manager, &data_packet, connection).await;
+                self.handle_data_packet(sync_manager, &data_packet).await;
             }
         }
     }
@@ -101,7 +101,7 @@ impl PacketHandler {
                 let job_id = packet.params.get("job_id").unwrap().parse::<u32>().unwrap();
 
                 let mut option_arc_transfer = sync_manager.get_transfer_by_id(transfer_id).await;
-                let mut transfer_arc = option_arc_transfer.as_mut().unwrap();
+                let transfer_arc = option_arc_transfer.as_mut().unwrap();
                 let mut transfer = transfer_arc.lock().await;
 
                 transfer.status = TransferStatus::Accepted;
@@ -164,7 +164,7 @@ impl PacketHandler {
         }
     }
 
-    pub async fn handle_data_packet(&self, sync_manager: &mut SyncManager, packet: &DataPacket, connection: &Connection) {
+    pub async fn handle_data_packet(&self, sync_manager: &mut SyncManager, packet: &DataPacket) {
         // Get the transfer by job id
         let job_id = packet.job_id;
         let mut option_arc_transfer = sync_manager.get_transfer_by_job_id(job_id).await;

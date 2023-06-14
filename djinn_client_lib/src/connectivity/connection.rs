@@ -7,7 +7,6 @@ use djinn_core_lib::data::packets::packet::Packet;
 use djinn_core_lib::data::packets::packet::duplicate_packet;
 use tokio::io::AsyncWriteExt;
 use tokio::io::BufReader;
-use tokio::io::BufWriter;
 use tokio::io::ReadHalf;
 use tokio::io::WriteHalf;
 use tokio::net::TcpStream;
@@ -118,17 +117,4 @@ impl Connection {
             )));
         }
     }
-
-    pub async fn read_next_packet_reader(&mut self, reader: &mut BufReader<ReadHalf<TcpStream>>) -> Result<Option<Box<dyn Packet>>, Box<dyn Error>> {
-        debug!("Waiting for packet");
-        let packets = self.packet_reader.read2(reader, Some(1)).await;
-        debug!("Packet received");
-
-        if packets.is_empty() {
-            return Ok(None);
-        }
-
-        return Ok(Some(duplicate_packet(&packets[0])));
-    }
-
 }

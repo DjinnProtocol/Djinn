@@ -1,7 +1,7 @@
 use std::{error::Error, time::Duration, collections::HashMap, sync::Arc};
 
 use djinn_core_lib::data::{syncing::IndexManager, packets::{ControlPacket, ControlPacketType, packet::Packet}};
-use tokio::{time::sleep, sync::Mutex, io::{WriteHalf, BufWriter, AsyncWriteExt}, net::TcpStream};
+use tokio::{time::sleep, sync::Mutex, io::{WriteHalf, AsyncWriteExt}, net::TcpStream};
 
 pub struct FsPoller {
     pub path: String,
