@@ -7,15 +7,18 @@ use djinn_core_lib::{data::packets::{
 }, jobs::{Job, JobType}};
 use serde::__private::de;
 use tokio::{sync::{Mutex, broadcast}, io::{BufReader, AsyncWriteExt, WriteHalf, ReadHalf}, net::TcpStream};
+use uuid::Uuid;
 use super::{ConnectionData, ConnectionUpdate, ConnectionUpdateType};
 
 pub struct Connection {
+    pub uuid: Uuid,
     pub data: Arc<Mutex<ConnectionData>>,
 }
 
 impl Connection {
-    pub fn new(data: Arc<Mutex<ConnectionData>>) -> Connection {
+    pub fn new(uuid: Uuid, data: Arc<Mutex<ConnectionData>>) -> Connection {
         Connection {
+            uuid,
             data
         }
     }
@@ -47,14 +50,17 @@ impl Connection {
     pub async fn listen(&mut self) {
         let data_arc = self.data.clone();
         let data = data_arc.lock().await;
+        let connection_uuid = data.uuid.clone();
         let read_stream_arc = data.read_stream.clone();
         drop(data);
 
         // Listen for broadcast in separate async task
         tokio::spawn(async move {
-            let mut new_connection = Connection::new(data_arc);
+            let mut new_connection = Connection::new(connection_uuid, data_arc);
             new_connection.listen_for_broadcasts().await;
         });
+
+        info!("Listening for packets on connection {}", connection_uuid);
 
         // Handle incoming streams
         let mut packet_reader = PacketReader::new();
@@ -65,7 +71,7 @@ impl Connection {
 
             if packets.len() == 0 {
                 // Connection closed
-                debug!("Connection closed");
+                info!("Connection closed for {}", connection_uuid);
                 break;
             }
 

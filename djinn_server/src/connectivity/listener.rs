@@ -28,7 +28,7 @@ impl Listener {
         info!("Listening on {}:{}", host, port);
         loop {
             let (socket, _) = listener.accept().await.unwrap();
-            debug!("New connection accepted from: {}", socket.peer_addr().unwrap());
+            info!("New connection accepted from: {}", socket.peer_addr().unwrap());
             self.handle_new_connection(socket).await;
         }
     }
@@ -36,11 +36,12 @@ impl Listener {
     async fn handle_new_connection(&mut self, stream: TcpStream) {
         let new_receiver = self.connections_broadcast_sender.subscribe();
         let connection_data = ConnectionData::new(stream, new_receiver, self.connections_broadcast_sender.clone());
+        let connection_uuid = connection_data.uuid.clone();
         let packed_connection_data = Arc::new(Mutex::new(connection_data));
         self.connections.push(packed_connection_data.clone());
 
         tokio::spawn(async move {
-            let mut connection = Connection::new(packed_connection_data);
+            let mut connection = Connection::new(connection_uuid, packed_connection_data);
             connection.listen().await;
         });
     }

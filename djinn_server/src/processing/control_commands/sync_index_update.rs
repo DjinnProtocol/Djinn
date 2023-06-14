@@ -108,7 +108,7 @@ pub async fn process_client_index(
             let mut full_file_path = full_path.clone() + "/" + key;
             full_file_path = full_file_path.replace("//", "/");
 
-            debug!("Deleting file: {}", full_file_path);
+            info!("{} -> server: DEL {}", connection.uuid, key);
 
             fs::remove_file(full_file_path).await.unwrap();
             // Remove from index
@@ -128,6 +128,8 @@ pub async fn process_client_index(
             let data = connection.data.lock().await;
             let sender = &data.connections_broadcast_sender.lock().await;
             sender.send(ConnectionUpdate::new(data.uuid.clone())).expect("Failed to send connection update");
+        } else if value == "DELETE" {
+            info!("server -> {}: DEL {}", connection.uuid, key);
         }
     }
 

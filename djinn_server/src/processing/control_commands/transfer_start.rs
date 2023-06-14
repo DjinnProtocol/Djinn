@@ -52,8 +52,8 @@ impl ControlCommand for TransferStartCommand {
         job.status = JobStatus::Running;
 
         // Get the file path from the job
-        let file_path = job.params.get("file_path").unwrap();
-        let full_path = CONFIG.serving_directory.clone().unwrap() + "/" + file_path;
+        let file_path = job.params.get("file_path").unwrap().clone();
+        let full_path = CONFIG.serving_directory.clone().unwrap() + "/" + &file_path;
 
         // Open da file
         let packet_generator = DataPacketGenerator::new(job_id, full_path);
@@ -81,6 +81,7 @@ impl ControlCommand for TransferStartCommand {
         write_stream.flush().await?;
 
         debug!("Done sending data");
+        info!("server -> {}: {}", connection.uuid, file_path);
 
         return Ok(());
     }

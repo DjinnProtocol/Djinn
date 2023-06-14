@@ -4,3 +4,5 @@ lint:
     cargo clippy --fix
 test:
     cargo test
+info:
+    RUST_LOG=INFO cargo run

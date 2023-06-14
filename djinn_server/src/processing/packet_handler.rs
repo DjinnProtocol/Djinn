@@ -19,7 +19,7 @@ impl PacketHandler {
 
         match packet_ref.get_packet_type() {
             PacketType::Control => {
-                info!("Control packet received");
+                debug!("Control packet received");
                 let control_packet = packet_ref.as_any().downcast_ref::<ControlPacket>().unwrap();
 
                 self.handle_control_packet(&control_packet, connection).await;
@@ -117,6 +117,9 @@ impl PacketHandler {
                 let data = connection.data.lock().await;
                 let sender = &data.connections_broadcast_sender.lock().await;
                 sender.send(ConnectionUpdate::new(data.uuid.clone())).expect("Failed to send connection update");
+
+                // Log
+                info!("{} -> server: {}", connection.uuid, file_path);
             }
         }
     }
