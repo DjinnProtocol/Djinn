@@ -1,7 +1,11 @@
-mod sync_handler;
-pub use sync_handler::SyncHandler;
+mod sync_manager;
+pub use sync_manager::SyncManager;
 mod fs_poller;
 mod transfer;
 pub use transfer::Transfer;
 pub use transfer::TransferDirection;
 pub use transfer::TransferStatus;
+mod packet_handler;
+pub use packet_handler::PacketHandler;
+mod transfer_handler;
+pub use transfer_handler::TransferHandler;

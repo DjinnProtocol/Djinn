@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use crate::{connectivity::Connection, commands::{EchoCommand, GetCommand}, syncing::SyncHandler};
+use crate::{connectivity::Connection, commands::{EchoCommand, GetCommand}, syncing::SyncManager};
 
 pub struct ClientInstance {
   connection: Connection,
@@ -23,18 +23,19 @@ impl ClientInstance {
 
   pub async fn get_as_iterator(&mut self, file_path: String) {
     let command = GetCommand::new(file_path);
-    let str = command.execute(&mut self.connection).await.expect("AAA");
+    let str = command.execute(&mut self.connection).await.expect("Failed to get file");
     println!("{}", str);
   }
 
-  pub async fn put(&mut self, file_path: String, destination: String) {
+  pub async fn put(&mut self, _file_path: String, _destination: String) {
     // let command = PutCommand::new(file_path, destination);
     // command.execute(&mut self.connection).await.expect("AAA");
+    info!("Put command not implemented")
   }
 
   pub async fn sync_internal(&mut self, path: String, target: String) {
-    let mut handler = SyncHandler::new(path, target);
-    handler.start(&mut self.connection).await.expect("AAA");
+    let mut handler = SyncManager::new(path, target);
+    handler.start(&mut self.connection).await.expect("Sync handler failed");
   }
 
   pub async fn disconnect(&mut self) -> Result<(), Box<dyn Error>> {
