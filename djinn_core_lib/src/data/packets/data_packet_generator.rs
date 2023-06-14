@@ -118,7 +118,7 @@ mod tests {
         let file = File::open(file_path).unwrap();
 
         let buf_reader = BufReader::new(file);
-        let mut data_packet_generator = DataPacketGeneratorIterator::new(1, buf_reader);
+        let data_packet_generator = DataPacketGeneratorIterator::new(1, buf_reader);
 
         let mut packet_count = 0;
 

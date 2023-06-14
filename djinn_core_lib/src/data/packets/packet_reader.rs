@@ -1,4 +1,4 @@
-use tokio::{io::{ReadHalf, BufReader, AsyncReadExt, AsyncRead}, net::TcpStream};
+use tokio::io::{BufReader, AsyncReadExt, AsyncRead};
 
 use crate::data::packets::packet::{deserialize_packet, get_packet_length};
 

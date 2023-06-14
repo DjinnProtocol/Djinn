@@ -57,12 +57,37 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_deserialize_control_packet() {
+    fn test_deserialize_data_packet() {
         let buffer: Vec<u8> = DataPacket::new(0, vec![], 0).to_buffer();
         let boxed_packet = deserialize_packet(&buffer);
         let packet_ref: &dyn Packet = boxed_packet.as_ref();
 
-
         assert!(matches!(packet_ref.get_packet_type(), PacketType::Data));
     }
+
+    #[test]
+    fn test_deserialize_control_packet() {
+        let buffer: Vec<u8> = ControlPacket::new(ControlPacketType::None, HashMap::new()).to_buffer();
+        let boxed_packet = deserialize_packet(&buffer);
+        let packet_ref: &dyn Packet = boxed_packet.as_ref();
+
+        assert!(matches!(packet_ref.get_packet_type(), PacketType::Control));
+    }
+
+    #[test]
+    fn test_duplicate_data_packet() {
+        let data_packet = DataPacket::new(0, vec![1, 2, 3], 22);
+
+        // Downcast to Box<dyn Packet> to be able to use the duplicate_packet function
+        let boxed_packet: Box<dyn Packet> = Box::new(data_packet);
+        let duplicated_packet = duplicate_packet(&boxed_packet);
+
+        let duplicated_data_packet = duplicated_packet.as_any().downcast_ref::<DataPacket>().unwrap();
+
+        // Assert
+        assert_eq!(duplicated_data_packet.job_id, duplicated_data_packet.job_id);
+        assert_eq!(duplicated_data_packet.data, duplicated_data_packet.data);
+        assert_eq!(duplicated_data_packet.packet_number, duplicated_data_packet.packet_number);
+    }
+
 }
