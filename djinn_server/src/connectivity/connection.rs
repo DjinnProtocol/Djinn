@@ -1,14 +1,20 @@
 use std::{error::Error, sync::Arc};
 
-use crate::{processing::{PacketHandler, control_commands::process_client_index}, syncing::SourceOfTruth};
-use djinn_core_lib::{data::packets::{
-    packet::Packet,
-    PacketReader,
-}, jobs::{Job, JobType}};
-use serde::__private::de;
-use tokio::{sync::{Mutex, broadcast}, io::{BufReader, AsyncWriteExt, WriteHalf, ReadHalf}, net::TcpStream};
-use uuid::Uuid;
 use super::{ConnectionData, ConnectionUpdate, ConnectionUpdateType};
+use crate::{
+    processing::PacketHandler,
+    syncing::{ClientIndexHandler, SourceOfTruth},
+};
+use djinn_core_lib::{
+    data::packets::{packet::Packet, PacketReader},
+    jobs::{Job, JobType},
+};
+use tokio::{
+    io::{AsyncWriteExt, BufReader, WriteHalf},
+    net::TcpStream,
+    sync::Mutex,
+};
+use uuid::Uuid;
 
 pub struct Connection {
     pub uuid: Uuid,
@@ -17,10 +23,7 @@ pub struct Connection {
 
 impl Connection {
     pub fn new(uuid: Uuid, data: Arc<Mutex<ConnectionData>>) -> Connection {
-        Connection {
-            uuid,
-            data
-        }
+        Connection { uuid, data }
     }
 
     pub async fn new_job_id(&mut self) -> u32 {
@@ -35,7 +38,7 @@ impl Connection {
         for job in &mut data.jobs {
             let unlocked_job = job.lock().await;
             if unlocked_job.id == job_id {
-                return Some(job.clone())
+                return Some(job.clone());
             }
         }
 
@@ -107,11 +110,6 @@ impl Connection {
         data.write_stream.clone()
     }
 
-    pub async fn get_read_stream(&mut self) -> Arc<Mutex<ReadHalf<TcpStream>>> {
-        let data = self.data.lock().await;
-        data.read_stream.clone()
-    }
-
     pub async fn listen_for_broadcasts(&mut self) {
         // Lock data to get broadcast receiver
         let data = self.data.lock().await;
@@ -128,7 +126,7 @@ impl Connection {
             match broadcast {
                 Ok(broadcast) => {
                     self.handle_connection_update(broadcast).await;
-                },
+                }
                 Err(_) => {
                     // Connection closed
                     debug!("Connection closed");
@@ -139,31 +137,36 @@ impl Connection {
     }
 
     pub async fn handle_connection_update(&mut self, connection_update: ConnectionUpdate) {
-       match connection_update.update_type {
-          ConnectionUpdateType::ServerIndexUpdated => {
-            let mut data = self.data.lock().await;
-            if data.uuid == connection_update.connection_uuid {
-                // Ignore own broadcast
-                return;
-            }
-            //Find active sync job
-            let mut arc_sync_job = None;
-            for job in &mut data.jobs {
-                let unlocked_job = job.lock().await;
-                if matches!(unlocked_job.job_type, JobType::Sync) {
-                    arc_sync_job = Some(job.clone());
-                    break;
+        match connection_update.update_type {
+            ConnectionUpdateType::ServerIndexUpdated => {
+                let mut data = self.data.lock().await;
+                if data.uuid == connection_update.connection_uuid {
+                    // Ignore own broadcast
+                    return;
+                }
+                //Find active sync job
+                let mut arc_sync_job = None;
+                for job in &mut data.jobs {
+                    let unlocked_job = job.lock().await;
+                    if matches!(unlocked_job.job_type, JobType::Sync) {
+                        arc_sync_job = Some(job.clone());
+                        break;
+                    }
+                }
+
+                let last_index = data.last_index.clone();
+                drop(data);
+
+                if arc_sync_job.is_some() {
+                    debug!("Processing client index");
+                    let client_index_handler = ClientIndexHandler::new(
+                        last_index,
+                        arc_sync_job.unwrap(),
+                        SourceOfTruth::Server,
+                    );
+                    client_index_handler.handle(self).await;
                 }
             }
-
-            let last_index = data.last_index.clone();
-            drop(data);
-
-            if arc_sync_job.is_some() {
-                debug!("Processing client index");
-                process_client_index(self, last_index, arc_sync_job.unwrap(), SourceOfTruth::Server).await;
-            }
-          },
-       }
+        }
     }
 }

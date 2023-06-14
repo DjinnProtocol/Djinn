@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use uuid::Uuid;
 
 #[derive(Clone, Debug)]
@@ -11,16 +9,14 @@ pub enum ConnectionUpdateType {
 #[derive(Clone, Debug)]
 pub struct ConnectionUpdate {
     pub update_type: ConnectionUpdateType,
-    pub connection_uuid: Uuid,
-    data: HashMap<String, String>
+    pub connection_uuid: Uuid
 }
 
 impl ConnectionUpdate {
     pub fn new(connection_uuid: Uuid) -> Self {
         Self {
             connection_uuid,
-            update_type: ConnectionUpdateType::ServerIndexUpdated,
-            data: HashMap::new()
+            update_type: ConnectionUpdateType::ServerIndexUpdated
         }
     }
 }

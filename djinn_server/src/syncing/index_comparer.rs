@@ -1,7 +1,6 @@
-use core::time;
-use std::{collections::HashMap};
+use std::collections::HashMap;
 
-use uuid::timestamp;
+#[derive(Copy, Clone)]
 pub enum SourceOfTruth {
     Client,
     Server,
@@ -25,7 +24,7 @@ impl IndexComparer {
             client_index,
             server_index,
             source_of_truth,
-            server_deleted
+            server_deleted,
         }
     }
 
@@ -34,12 +33,11 @@ impl IndexComparer {
 
         // Get timestamps
         let some_server_timestamp = self.server_index.get("#timestamp");
-        let server_timestamp = if some_server_timestamp.is_some() {
+        let _server_timestamp = if some_server_timestamp.is_some() {
             some_server_timestamp.unwrap()
         } else {
             &0
         };
-
 
         let some_client_timestamp = self.client_index.get("#timestamp");
         let client_timestamp = if some_client_timestamp.is_some() {
@@ -63,7 +61,9 @@ impl IndexComparer {
                     continue;
                 } else if timestamp == &0 {
                     // Client requests delete
-                    if matches!(self.source_of_truth, SourceOfTruth::Client) && client_timestamp > self.server_index.get(key).unwrap() {
+                    if matches!(self.source_of_truth, SourceOfTruth::Client)
+                        && client_timestamp > self.server_index.get(key).unwrap()
+                    {
                         //File delete
                         result.insert(key.to_string(), "SELF_DELETE".to_string());
                     } else {
@@ -79,11 +79,14 @@ impl IndexComparer {
                 }
             } else if timestamp != &0 {
                 let possible_deleted_timestamp = self.server_deleted.get(key);
-                if matches!(self.source_of_truth, SourceOfTruth::Client) && (possible_deleted_timestamp.is_none() || possible_deleted_timestamp.unwrap() < timestamp) {
+                if matches!(self.source_of_truth, SourceOfTruth::Client)
+                    && (possible_deleted_timestamp.is_none()
+                        || possible_deleted_timestamp.unwrap() < timestamp)
+                {
                     //File does not exist on server
                     result.insert(key.to_string(), "PUT".to_string());
                 } else {
-                   //File delete
+                    //File delete
                     result.insert(key.to_string(), "DELETE".to_string());
                 }
             }
@@ -98,7 +101,7 @@ impl IndexComparer {
                 debug!("Checking for server file: {:?}", key);
                 debug!("Server timestamp: {:?}", timestamp);
                 debug!("Client timestamp: {:?}", client_timestamp);
-                    //File does not exist on client
+                //File does not exist on client
                 result.insert(key.to_string(), "GET".to_string());
             }
         }
@@ -106,7 +109,6 @@ impl IndexComparer {
         result
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -121,7 +123,12 @@ mod tests {
 
         let server_deleted = HashMap::new();
 
-        let comparer = IndexComparer::new(client_index, server_index, SourceOfTruth::Client, server_deleted);
+        let comparer = IndexComparer::new(
+            client_index,
+            server_index,
+            SourceOfTruth::Client,
+            server_deleted,
+        );
         let result = comparer.compare();
 
         assert_eq!(result.get("test.txt").unwrap(), "PUT");
@@ -130,16 +137,21 @@ mod tests {
     #[test]
     fn test_client_delete() {
         let mut client_index = HashMap::new();
+        client_index.insert("test.txt".to_string(), 0);
         client_index.insert("#timestamp".to_string(), 123);
-
 
         let mut server_index = HashMap::new();
         server_index.insert("test.txt".to_string(), 120);
-        server_index.insert("#timestamp".to_string(), 124);
+        server_index.insert("#timestamp".to_string(), 122);
 
         let server_deleted = HashMap::new();
 
-        let comparer = IndexComparer::new(client_index, server_index, SourceOfTruth::Client, server_deleted);
+        let comparer = IndexComparer::new(
+            client_index,
+            server_index,
+            SourceOfTruth::Client,
+            server_deleted,
+        );
         let result = comparer.compare();
 
         assert_eq!(result.get("test.txt").unwrap(), "SELF_DELETE");
@@ -150,13 +162,17 @@ mod tests {
         let mut client_index = HashMap::new();
         client_index.insert("#timestamp".to_string(), 123);
 
-
         let mut server_index = HashMap::new();
         server_index.insert("test.txt".to_string(), 123);
 
         let server_deleted = HashMap::new();
 
-        let comparer = IndexComparer::new(client_index, server_index, SourceOfTruth::Server, server_deleted);
+        let comparer = IndexComparer::new(
+            client_index,
+            server_index,
+            SourceOfTruth::Server,
+            server_deleted,
+        );
         let result = comparer.compare();
 
         assert_eq!(result.get("test.txt").unwrap(), "GET");
@@ -171,7 +187,12 @@ mod tests {
 
         let server_deleted = HashMap::new();
 
-        let comparer = IndexComparer::new(client_index, server_index, SourceOfTruth::Server, server_deleted);
+        let comparer = IndexComparer::new(
+            client_index,
+            server_index,
+            SourceOfTruth::Server,
+            server_deleted,
+        );
         let result = comparer.compare();
 
         assert_eq!(result.get("test.txt").unwrap(), "DELETE");
@@ -187,7 +208,12 @@ mod tests {
 
         let server_deleted = HashMap::new();
 
-        let comparer = IndexComparer::new(client_index, server_index, SourceOfTruth::Server, server_deleted);
+        let comparer = IndexComparer::new(
+            client_index,
+            server_index,
+            SourceOfTruth::Server,
+            server_deleted,
+        );
         let result = comparer.compare();
 
         assert_eq!(result.get("test.txt").unwrap(), "GET");
@@ -203,7 +229,12 @@ mod tests {
 
         let server_deleted = HashMap::new();
 
-        let comparer = IndexComparer::new(client_index, server_index, SourceOfTruth::Server, server_deleted);
+        let comparer = IndexComparer::new(
+            client_index,
+            server_index,
+            SourceOfTruth::Server,
+            server_deleted,
+        );
         let result = comparer.compare();
 
         assert_eq!(result.get("test.txt").unwrap(), "GET");
@@ -219,7 +250,12 @@ mod tests {
 
         let server_deleted = HashMap::new();
 
-        let comparer = IndexComparer::new(client_index, server_index, SourceOfTruth::Server, server_deleted);
+        let comparer = IndexComparer::new(
+            client_index,
+            server_index,
+            SourceOfTruth::Server,
+            server_deleted,
+        );
         let result = comparer.compare();
 
         // Check result empty
@@ -227,7 +263,7 @@ mod tests {
     }
 
     #[test]
-    fn test_if_extra_info_gets_ignored(){
+    fn test_if_extra_info_gets_ignored() {
         let mut client_index = HashMap::new();
         client_index.insert("test.txt".to_string(), 123);
         client_index.insert("#test.txt".to_string(), 123);
@@ -237,20 +273,24 @@ mod tests {
 
         let server_deleted = HashMap::new();
 
-        let comparer = IndexComparer::new(client_index, server_index, SourceOfTruth::Server, server_deleted);
+        let comparer = IndexComparer::new(
+            client_index,
+            server_index,
+            SourceOfTruth::Server,
+            server_deleted,
+        );
         let result = comparer.compare();
 
         assert_eq!(result.get("test.txt").unwrap(), "GET");
         assert_eq!(result.len(), 1);
     }
 
-
     #[test]
     /*
-        If a client pushes an update and another client deletes it beforehand the server should not delete the file and instead
-        request the client to get the file.
-     */
-    fn test_out_of_sync_client_delete_before_update(){
+       If a client pushes an update and another client deletes it beforehand the server should not delete the file and instead
+       request the client to get the file.
+    */
+    fn test_out_of_sync_client_delete_before_update() {
         let mut client_index = HashMap::new();
         client_index.insert("#timestamp".to_string(), 123);
 
@@ -260,7 +300,12 @@ mod tests {
 
         let server_deleted = HashMap::new();
 
-        let comparer = IndexComparer::new(client_index, server_index, SourceOfTruth::Client, server_deleted);
+        let comparer = IndexComparer::new(
+            client_index,
+            server_index,
+            SourceOfTruth::Client,
+            server_deleted,
+        );
         let result = comparer.compare();
 
         assert_eq!(result.get("test.txt").unwrap(), "GET");
@@ -268,9 +313,9 @@ mod tests {
 
     #[test]
     /*
-        If a client has a file the server doesnt anymore, the server should delete the file on the client.
-     */
-    fn test_out_of_sync_client_put_after_delete(){
+       If a client has a file the server doesnt anymore, the server should delete the file on the client.
+    */
+    fn test_out_of_sync_client_put_after_delete() {
         let mut client_index = HashMap::new();
         client_index.insert("test.txt".to_string(), 123);
         client_index.insert("#timestamp".to_string(), 123);
@@ -281,7 +326,12 @@ mod tests {
         let mut server_deleted = HashMap::new();
         server_deleted.insert("test.txt".to_string(), 124);
 
-        let comparer = IndexComparer::new(client_index, server_index, SourceOfTruth::Client, server_deleted);
+        let comparer = IndexComparer::new(
+            client_index,
+            server_index,
+            SourceOfTruth::Client,
+            server_deleted,
+        );
         let result = comparer.compare();
 
         assert_eq!(result.get("test.txt").unwrap(), "DELETE");

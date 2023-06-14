@@ -2,7 +2,7 @@ extern crate pretty_env_logger;
 use std::collections::HashMap;
 
 use configuration::application_config::ApplicationConfig;
-use connectivity::Listener;
+use connectivity::ConnectionManager;
 use lazy_static::lazy_static;
 use tokio::sync::Mutex;
 
@@ -23,6 +23,6 @@ lazy_static! {
 #[tokio::main]
 async fn main(){
     pretty_env_logger::init();
-    let mut listener = Listener::new();
+    let mut listener = ConnectionManager::new();
     listener.listen_for_connections().await;
 }

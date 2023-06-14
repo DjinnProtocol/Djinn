@@ -1,4 +1,4 @@
-use std::{sync::{Arc}, collections::HashMap, hash::Hash};
+use std::{sync::{Arc}, collections::HashMap};
 
 use djinn_core_lib::jobs::Job;
 use tokio::{net::TcpStream, io::{ReadHalf, WriteHalf}, sync::{Mutex, broadcast::{Receiver, Sender}}};

@@ -1,11 +1,11 @@
-use djinn_core_lib::{data::packets::{packet::{Packet, self}, PacketType, ControlPacketType, ControlPacket, DataPacket}, jobs::JobStatus};
+use djinn_core_lib::{data::packets::{packet::{Packet}, PacketType, ControlPacketType, ControlPacket, DataPacket}, jobs::JobStatus};
 use filetime::{FileTime, set_file_mtime};
 use tokio::fs::{File, rename};
 use tokio::io::AsyncWriteExt;
 
-use crate::{connectivity::{Connection, ConnectionUpdate}, CONFIG};
+use crate::{connectivity::{Connection, ConnectionUpdate}, CONFIG, syncing::SourceOfTruth};
 
-use super::control_commands::{EchoRequestCommand, ControlCommand, TransferRequestCommand, TransferStartCommand, SyncIndexResponseCommand, SyncRequestCommand, SyncIndexUpdateCommand};
+use super::control_commands::{EchoRequestCommand, ControlCommand, TransferRequestCommand, TransferStartCommand, SyncIndexUpdateCommand, SyncRequestCommand};
 
 
 
@@ -21,14 +21,11 @@ impl PacketHandler {
             PacketType::Control => {
                 debug!("Control packet received");
                 let control_packet = packet_ref.as_any().downcast_ref::<ControlPacket>().unwrap();
-
                 self.handle_control_packet(&control_packet, connection).await;
             },
             PacketType::Data => {
                 // Throw error
-                debug!("data packet received");
                 let data_packet = packet_ref.as_any().downcast_ref::<DataPacket>().unwrap();
-
                 self.handle_data_packet(&data_packet, connection).await;
             }
         }
@@ -48,7 +45,9 @@ impl PacketHandler {
                 //Transfer reverse for server -> client
             },
             ControlPacketType::SyncIndexResponse => {
-                let command = SyncIndexResponseCommand {};
+                let command = SyncIndexUpdateCommand {
+                    source_of_truth: SourceOfTruth::Server
+                };
                 command.execute(connection, packet).await.unwrap();
             },
             ControlPacketType::TransferStart => {
@@ -60,7 +59,9 @@ impl PacketHandler {
                 command.execute(connection, packet).await.unwrap();
             },
             ControlPacketType::SyncIndexUpdate => {
-                let command = SyncIndexUpdateCommand {};
+                let command = SyncIndexUpdateCommand {
+                    source_of_truth: SourceOfTruth::Client
+                };
                 command.execute(connection, packet).await.unwrap();
             },
             _ => {
@@ -83,6 +84,7 @@ impl PacketHandler {
         let arc_job = option_arc_job.unwrap();
         let mut job = arc_job.lock().await;
 
+        // If Job is still pending, create file
         if matches!(job.status, JobStatus::Pending) {
             // Throw error
             let file_path = job.params.get("file_path").unwrap();
@@ -94,14 +96,17 @@ impl PacketHandler {
             job.status = JobStatus::Running;
         }
 
+        // If Job is running, write to file
         if matches!(job.status, JobStatus::Running) {
             let file = job.open_file.as_mut().unwrap();
             if packet.has_data {
                 file.write_all(&packet.data).await.unwrap();
             } else {
+                // Close file
                 file.flush().await.unwrap();
                 job.status = JobStatus::Finished;
-                // Move file and set modified time
+
+                // Rename file
                 let file_path = job.params.get("file_path").unwrap();
                 let full_path = CONFIG.serving_directory.clone().unwrap() + "/" + file_path;
 
@@ -109,10 +114,12 @@ impl PacketHandler {
                     .await
                     .unwrap();
 
+                // Set file mtime
                 let modified_time = job.params.get("modified_time").unwrap();
                 let modified_time = modified_time.parse::<u64>().unwrap();
                 let file_time = FileTime::from_unix_time(modified_time as i64, 0);
                 set_file_mtime(&full_path, file_time).unwrap();
+
                 // Send connection update to all connections
                 let data = connection.data.lock().await;
                 let sender = &data.connections_broadcast_sender.lock().await;

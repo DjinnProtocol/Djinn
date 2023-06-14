@@ -41,7 +41,7 @@ impl ControlCommand for TransferRequestCommand {
 
         connection.add_job(job).await;
 
-        //Send response
+        //Send ack response
         let mut response = ControlPacket::new(ControlPacketType::TransferAck, HashMap::new());
         response.params.insert("job_id".to_string(), job_id.to_string());
         response.params.insert("transfer_id".to_string(), packet.params.get("transfer_id").unwrap().clone());
@@ -50,7 +50,6 @@ impl ControlCommand for TransferRequestCommand {
             let modified_time = fs::metadata(&full_path).await?.modified().unwrap().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
             response.params.insert("modified_time".to_string(), modified_time.to_string());
         }
-
 
         connection.send_packet(response).await?;
 

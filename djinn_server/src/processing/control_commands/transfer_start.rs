@@ -1,10 +1,10 @@
-use std::error::Error;
-use std::sync::Arc;
 use async_trait::async_trait;
 use djinn_core_lib::data::packets::DataPacketGenerator;
-use djinn_core_lib::data::packets::{ControlPacket, packet::Packet};
-use djinn_core_lib::jobs::{JobStatus, JobType, Job};
-use tokio::io::{BufWriter, AsyncWriteExt};
+use djinn_core_lib::data::packets::{packet::Packet, ControlPacket};
+use djinn_core_lib::jobs::{Job, JobStatus, JobType};
+use std::error::Error;
+use std::sync::Arc;
+use tokio::io::{AsyncWriteExt};
 use tokio::sync::Mutex;
 
 use crate::{connectivity::Connection, CONFIG};
@@ -15,7 +15,52 @@ pub struct TransferStartCommand {}
 
 #[async_trait]
 impl ControlCommand for TransferStartCommand {
-    async fn execute(&self, connection: &mut Connection, packet: &ControlPacket) -> Result<(), Box<dyn Error>> {
+    async fn execute(
+        &self,
+        connection: &mut Connection,
+        packet: &ControlPacket,
+    ) -> Result<(), Box<dyn Error>> {
+        // Get job
+        let arc_job_result = self.get_linked_job(connection, packet).await;
+
+        if arc_job_result.is_err() {
+            return Ok(()); //TODO: Handle error
+        }
+
+        let unwrapped_arc_job = arc_job_result.unwrap();
+        let job = unwrapped_arc_job.lock().await;
+        let file_path = job.params.get("file_path").unwrap().clone();
+
+        // If the job is not in the pending state, return an error
+        if !matches!(job.status, JobStatus::Pending) {
+            return Err(Box::new(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Job is not in the pending state",
+            )));
+        }
+
+        drop(job);
+
+        // Transfer the file
+        let push_result = self.push_file(connection, unwrapped_arc_job).await;
+
+        if push_result.is_err() {
+            return Ok(()); //TODO: Handle error
+        }
+
+        debug!("Done sending data");
+        info!("server -> {}: {}", connection.uuid, file_path);
+
+        return Ok(());
+    }
+}
+
+impl TransferStartCommand {
+    async fn get_linked_job(
+        &self,
+        connection: &mut Connection,
+        packet: &ControlPacket,
+    ) -> Result<Arc<Mutex<Job>>, Box<dyn Error + Send + Sync>> {
         // Get the file path from the packet
         let job_id = packet.params.get("job_id").unwrap().parse::<u32>().unwrap();
 
@@ -29,8 +74,8 @@ impl ControlCommand for TransferStartCommand {
             )));
         }
 
-        let mut job_arc = option_sync_job_arc.unwrap();
-        let mut job = job_arc.lock().await;
+        let job_arc = option_sync_job_arc.unwrap();
+        let job = job_arc.lock().await;
 
         // If the job is not a transfer job, return an error
         if !matches!(job.job_type, JobType::Transfer) {
@@ -40,20 +85,23 @@ impl ControlCommand for TransferStartCommand {
             )));
         }
 
-        // If the job is not in the pending state, return an error
-        if !matches!(job.status, JobStatus::Pending) {
-            return Err(Box::new(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "Job is not in the pending state",
-            )));
-        }
+        Ok(job_arc.clone())
+    }
 
+    async fn push_file(
+        &self,
+        connection: &mut Connection,
+        arc_job: Arc<Mutex<Job>>,
+    ) -> Result<(), Box<dyn Error + Send + Sync>> {
+        let mut job = arc_job.lock().await;
+        let job_id = job.id;
         // Set the job status to running
         job.status = JobStatus::Running;
-
         // Get the file path from the job
         let file_path = job.params.get("file_path").unwrap().clone();
         let full_path = CONFIG.serving_directory.clone().unwrap() + "/" + &file_path;
+
+        drop(job);
 
         // Open da file
         let packet_generator = DataPacketGenerator::new(job_id, full_path);
@@ -62,27 +110,19 @@ impl ControlCommand for TransferStartCommand {
         // Get connection read_stream
         let write_stream_arc = connection.get_write_stream().await;
         let mut write_stream = write_stream_arc.lock().await;
-        // let mut writer = BufWriter::new(&mut *write_stream);
-        // TODO: check speed difference between BufWriter and and native stream
 
         for packet in iterator {
             let buffer = &packet.to_buffer();
             write_stream.write_all(&buffer).await?;
-            //Log first 4 bytes
-            // debug!("Packet length: {}", u32::from_be_bytes([buffer[0], buffer[1], buffer[2], buffer[3]]));
-            // debug!("Actual Length: {}", buffer.len());
-
-            // debug!("sent: {:?}", String::from_utf8(packet.data.clone()));
         }
 
         // Set the job status to complete
+        let mut job = arc_job.lock().await;
         job.status = JobStatus::Finished;
 
+        // Flush the write stream
         write_stream.flush().await?;
 
-        debug!("Done sending data");
-        info!("server -> {}: {}", connection.uuid, file_path);
-
-        return Ok(());
+        Ok(())
     }
 }

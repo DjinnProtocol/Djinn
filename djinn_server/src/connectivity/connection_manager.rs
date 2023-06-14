@@ -1,23 +1,23 @@
-use std::{sync::Arc, iter::Rev};
+use std::{sync::Arc};
 
 use tokio::{net::{TcpListener, TcpStream}, sync::{Mutex, broadcast:: {Sender, Receiver}}};
 use crate::CONFIG;
 
 use super::{ConnectionData, Connection, ConnectionUpdate};
 
-pub struct Listener {
+pub struct ConnectionManager {
     connections: Vec<Arc<Mutex<ConnectionData>>>,
-    connections_broadcast_receiver: Receiver<ConnectionUpdate>,
+    _connections_broadcast_receiver: Receiver<ConnectionUpdate>,
     connections_broadcast_sender: Sender<ConnectionUpdate>,
 }
 
-impl Listener {
-    pub fn new() -> Listener {
+impl ConnectionManager {
+    pub fn new() -> ConnectionManager {
         let (connection_broadcast_writer, connection_broadcast_reader) = tokio::sync::broadcast::channel(100);
-        Listener {
+        ConnectionManager {
             connections: vec![],
             connections_broadcast_sender: connection_broadcast_writer,
-            connections_broadcast_receiver: connection_broadcast_reader
+            _connections_broadcast_receiver: connection_broadcast_reader
         }
     }
 
