@@ -27,7 +27,7 @@ impl PacketHandler {
                 let control_packet = packet_ref.as_any().downcast_ref::<ControlPacket>().unwrap();
                 debug!("Control packet received");
 
-                self.handle_control_packet(sync_manager, &control_packet, connection)
+                self.handle_control_packet(sync_manager, control_packet, connection)
                     .await;
             }
             PacketType::Data => {
@@ -35,7 +35,7 @@ impl PacketHandler {
                 let data_packet: &DataPacket =
                     packet_ref.as_any().downcast_ref::<DataPacket>().unwrap();
 
-                self.handle_data_packet(sync_manager, &data_packet).await;
+                self.handle_data_packet(sync_manager, data_packet).await;
             }
         }
     }
@@ -72,7 +72,7 @@ impl PacketHandler {
 
                 // Spawn fs poller
                 let new_target = sync_manager.target.clone();
-                let new_job_id = sync_manager.job_id.unwrap().clone();
+                let new_job_id = sync_manager.job_id.unwrap();
                 let write_stream_arc = connection.write_stream.clone();
                 let new_is_syncing = sync_manager.is_syncing.clone();
 

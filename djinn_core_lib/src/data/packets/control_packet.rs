@@ -71,12 +71,12 @@ pub struct ControlPacket {
 
 impl ControlPacket {
     pub fn new(control_packet_type: ControlPacketType, params: HashMap<String, String>) -> ControlPacket {
-        return ControlPacket {
+        ControlPacket {
             packet_type: PacketType::Control,
             job_id: None,
             control_packet_type,
             params
-        };
+        }
     }
 }
 
@@ -126,7 +126,7 @@ impl Packet for ControlPacket {
             buffer.push(b';');
         }
 
-        return buffer;
+        buffer
     }
 
     fn calculate_packet_size(&self) -> u32 {
@@ -136,15 +136,15 @@ impl Packet for ControlPacket {
             size += (key.len() + value.len() + 2) as u32;
         }
 
-        return size
+        size
     }
 
     fn get_packet_type(&self) -> PacketType {
-        return self.packet_type;
+        self.packet_type
     }
 
     fn as_any(&self) -> &dyn Any {
-        return self;
+        self
     }
 }
 

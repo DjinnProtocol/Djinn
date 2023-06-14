@@ -11,16 +11,16 @@ pub struct PacketReader {
 
 impl PacketReader {
     pub fn new() -> PacketReader {
-        return PacketReader {
+        PacketReader {
             packets_processed: 0,
             buffer: Vec::with_capacity(131072)
-        };
+        }
     }
 
     pub async fn read2(&mut self, reader: &mut BufReader<ReadHalf<TcpStream>>, max_packets: Option<usize>) -> Vec<Box<dyn Packet>> {
         let mut packets: Vec<Box<dyn Packet>> = Vec::with_capacity(10);
 
-        while packets.len() == 0 {
+        while packets.is_empty() {
             let mut temp_buffer = [0; 65536];
             // debug!("Started reading");
             // debug!("Packet's processed: {}", self.packetsProcessed);
@@ -63,13 +63,13 @@ impl PacketReader {
             }
         }
 
-        return packets;
+        packets
     }
 
     pub async fn read(&mut self, reader: &mut BufReader<&mut ReadHalf<TcpStream>>, max_packets: Option<usize>) -> Vec<Box<dyn Packet>> {
         let mut packets: Vec<Box<dyn Packet>> = Vec::with_capacity(10);
 
-        while packets.len() == 0 {
+        while packets.is_empty() {
             let mut temp_buffer = [0; 65536];
             let bytes_read = reader.read(&mut temp_buffer).await.unwrap();
 
@@ -111,6 +111,6 @@ impl PacketReader {
             }
         }
 
-        return packets;
+        packets
     }
 }

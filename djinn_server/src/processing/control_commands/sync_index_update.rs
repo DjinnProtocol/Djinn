@@ -45,7 +45,7 @@ impl ControlCommand for SyncIndexUpdateCommand {
         let client_index_handler = ClientIndexHandler::new(
             client_index,
             unwrapped_arc_sync_job.clone(),
-            self.source_of_truth.clone(),
+            self.source_of_truth,
         );
         client_index_handler.handle(connection).await;
 

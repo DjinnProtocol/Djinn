@@ -100,7 +100,7 @@ impl GetCommand {
         while !last_packet_received {
             let packets = packet_reader.read2(reader, None).await;
 
-            if packets.len() == 0 {
+            if packets.is_empty() {
                 debug!("Connection closed");
                 break;
             }

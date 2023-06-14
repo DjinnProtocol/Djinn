@@ -111,10 +111,10 @@ impl Connection {
 
             return Ok(Some(duplicate_packet(&packets[0])));
         } else {
-            return Err(Box::new(std::io::Error::new(
+            Err(Box::new(std::io::Error::new(
                 std::io::ErrorKind::Other,
                 "Stream is not connected",
-            )));
+            )))
         }
     }
 }

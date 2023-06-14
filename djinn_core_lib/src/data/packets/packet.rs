@@ -11,7 +11,7 @@ pub trait Packet: Send + Sync {
 }
 
 pub fn get_packet_length(buffer: &Vec<u8>) -> u32 {
-    return u32::from_be_bytes([buffer[0], buffer[1], buffer[2], buffer[3]]);
+    u32::from_be_bytes([buffer[0], buffer[1], buffer[2], buffer[3]])
 }
 
 pub fn duplicate_packet(packet: &Box<dyn Packet>) -> Box<dyn Packet> {
@@ -28,7 +28,7 @@ pub fn duplicate_packet(packet: &Box<dyn Packet>) -> Box<dyn Packet> {
         }
     };
 
-    return temporary_packet;
+    temporary_packet
 }
 
 pub fn deserialize_packet(buffer: &Vec<u8>) -> Box<dyn Packet> {
@@ -49,7 +49,7 @@ pub fn deserialize_packet(buffer: &Vec<u8>) -> Box<dyn Packet> {
         }
     };
 
-    return temporary_packet;
+    temporary_packet
 }
 
 #[cfg(test)]

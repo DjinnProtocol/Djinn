@@ -23,7 +23,7 @@ impl ControlCommand for SyncRequestCommand {
         let full_path = CONFIG.serving_directory.clone().unwrap() + "/" + path;
 
         //Check if file exists if download request
-        if !fs::metadata(full_path).await.is_ok() {
+        if fs::metadata(full_path).await.is_err() {
             let mut params = HashMap::new();
             params.insert(
                 "reason".to_string(),
@@ -40,7 +40,7 @@ impl ControlCommand for SyncRequestCommand {
         let job_id = connection.new_job_id().await;
         //Create job
         let job = Job {
-            id: job_id.clone(),
+            id: job_id,
             job_type: JobType::Sync,
             status: JobStatus::Pending,
             params: packet.params.clone(),

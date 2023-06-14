@@ -29,7 +29,7 @@ impl TransferHandler {
             .transfers
             .push(Arc::new(Mutex::new(Transfer::new(
                 TransferDirection::ToClient,
-                transfer_id.clone(),
+                transfer_id,
                 path.clone(),
             ))));
 
@@ -57,7 +57,7 @@ impl TransferHandler {
             .transfers
             .push(Arc::new(Mutex::new(Transfer::new(
                 TransferDirection::ToServer,
-                transfer_id.clone(),
+                transfer_id,
                 path.clone(),
             ))));
 
@@ -94,7 +94,7 @@ impl TransferHandler {
         let full_path = format!("{}/{}", sync_manager.target, file_path);
 
         // Open da file
-        let packet_generator = DataPacketGenerator::new(transfer.job_id.clone(), full_path);
+        let packet_generator = DataPacketGenerator::new(transfer.job_id, full_path);
         let iterator = packet_generator.iter();
 
         // Get connection read_stream
@@ -114,7 +114,7 @@ impl TransferHandler {
             let buffer = &packet.to_buffer();
             // debug!("Sending length: {}", buffer.len());
             write_stream
-                .write_all(&buffer)
+                .write_all(buffer)
                 .await
                 .expect("Failed to write to stream")
         }

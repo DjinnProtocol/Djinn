@@ -70,7 +70,7 @@ impl ClientIndexHandler {
         let index_comparer = IndexComparer::new(
             self.client_index.clone(),
             server_index_manager.index,
-            self.source_of_truth.clone(),
+            self.source_of_truth,
             SERVER_DELETES.lock().await.clone(),
         );
 
@@ -115,7 +115,7 @@ impl ClientIndexHandler {
                 // Broadcast delete to all clients
                 let data = connection.data.lock().await;
                 let sender = &data.connections_broadcast_sender.lock().await;
-                sender.send(ConnectionUpdate::new(data.uuid.clone())).expect("Failed to send connection update");
+                sender.send(ConnectionUpdate::new(data.uuid)).expect("Failed to send connection update");
             }
         }
 
@@ -126,7 +126,7 @@ impl ClientIndexHandler {
         // Build packet
         let mut response = ControlPacket::new(ControlPacketType::SyncUpdate, changes.clone());
         let sync_job = self.arc_sync_job.lock().await;
-        response.job_id = Some(sync_job.id.clone());
+        response.job_id = Some(sync_job.id);
         // Send packet
         connection.send_packet(response).await.unwrap();
         connection.flush().await;

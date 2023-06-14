@@ -53,7 +53,7 @@ impl Connection {
     pub async fn listen(&mut self) {
         let data_arc = self.data.clone();
         let data = data_arc.lock().await;
-        let connection_uuid = data.uuid.clone();
+        let connection_uuid = data.uuid;
         let read_stream_arc = data.read_stream.clone();
         drop(data);
 
@@ -72,7 +72,7 @@ impl Connection {
             let mut reader = BufReader::new(&mut *read_stream);
             let packets = packet_reader.read(&mut reader, None).await;
 
-            if packets.len() == 0 {
+            if packets.is_empty() {
                 // Connection closed
                 info!("Connection closed for {}", connection_uuid);
                 break;

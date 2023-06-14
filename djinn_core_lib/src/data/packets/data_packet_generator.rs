@@ -58,7 +58,7 @@ impl Iterator for DataPacketGeneratorIterator {
         }
 
         // Send packet if buffer is full
-        if self.buffer.len() > 0 {
+        if !self.buffer.is_empty() {
             let packet = self.generate_packet();
 
             self.buffer.clear();
@@ -89,7 +89,7 @@ impl DataPacketGeneratorIterator {
             (self.packet_count + 1) as u32,
         );
 
-        return Some(packet);
+        Some(packet)
     }
 }
 
@@ -107,15 +107,15 @@ mod tests {
         let mut file = File::create(file_path.clone()).unwrap();
 
         for (_i, _) in (0..60000).enumerate() {
-            file.write_all(&[1 as u8]).unwrap();
+            file.write_all(&[1_u8]).unwrap();
         }
 
         for (_i, _) in (0..60000).enumerate() {
-            file.write_all(&[2 as u8]).unwrap();
+            file.write_all(&[2_u8]).unwrap();
         }
 
         // Read file
-        let file = File::open(file_path.clone()).unwrap();
+        let file = File::open(file_path).unwrap();
 
         let buf_reader = BufReader::new(file);
         let mut data_packet_generator = DataPacketGeneratorIterator::new(1, buf_reader);
@@ -123,7 +123,7 @@ mod tests {
         let mut packet_count = 0;
 
         // Test packets
-        while let Some(packet) = data_packet_generator.next() {
+        for packet in data_packet_generator {
             packet_count += 1;
 
             if packet_count < 3 {

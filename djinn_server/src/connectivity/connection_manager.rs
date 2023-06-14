@@ -36,7 +36,7 @@ impl ConnectionManager {
     async fn handle_new_connection(&mut self, stream: TcpStream) {
         let new_receiver = self.connections_broadcast_sender.subscribe();
         let connection_data = ConnectionData::new(stream, new_receiver, self.connections_broadcast_sender.clone());
-        let connection_uuid = connection_data.uuid.clone();
+        let connection_uuid = connection_data.uuid;
         let packed_connection_data = Arc::new(Mutex::new(connection_data));
         self.connections.push(packed_connection_data.clone());
 

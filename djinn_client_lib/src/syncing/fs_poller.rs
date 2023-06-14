@@ -81,7 +81,7 @@ impl FsPoller {
                 write_stream.flush().await?;
 
                 //Update index manager
-                if self.was_just_syncing == false {
+                if !self.was_just_syncing {
                     index_manager = new_index_manager;
                 }
             }

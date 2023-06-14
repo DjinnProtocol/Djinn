@@ -113,7 +113,7 @@ impl TransferStartCommand {
 
         for packet in iterator {
             let buffer = &packet.to_buffer();
-            write_stream.write_all(&buffer).await?;
+            write_stream.write_all(buffer).await?;
         }
 
         // Set the job status to complete

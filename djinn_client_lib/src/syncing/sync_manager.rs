@@ -71,7 +71,7 @@ impl SyncManager {
             // Read packets
             let packets = connection.packet_reader.read2(reader, None).await;
 
-            if packets.len() == 0 {
+            if packets.is_empty() {
                 // Connection closed
                 info!("Connection closed");
                 break;
@@ -80,7 +80,7 @@ impl SyncManager {
             // Handle packets
             for packet in packets {
                 packet_handler
-                    .handle_boxed_packet(self, packet, &connection)
+                    .handle_boxed_packet(self, packet, connection)
                     .await;
             }
         }
@@ -113,7 +113,7 @@ impl SyncManager {
                 // Get the file from the client
                 info!("Getting file {}", key);
                 transfer_handler
-                    .start_get_file(self, key, &connection)
+                    .start_get_file(self, key, connection)
                     .await;
             } else if value == "DELETE" {
                 // Delete the file from the client
@@ -128,7 +128,7 @@ impl SyncManager {
                 // Put the file on the client
                 info!("Putting file {}", key);
                 transfer_handler
-                    .start_put_file(self, key, &connection)
+                    .start_put_file(self, key, connection)
                     .await;
             } else {
                 //Log type

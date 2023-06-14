@@ -14,15 +14,15 @@ pub struct DataPacket {
 
 impl DataPacket {
     pub fn new(job_id: u32, data: Vec<u8>, packet_number: u32) -> DataPacket {
-        let has_data = data.len() > 0;
+        let has_data = !data.is_empty();
 
-        return DataPacket {
+        DataPacket {
             packet_type: PacketType::Data,
             job_id,
             packet_number,
             data,
             has_data
-        };
+        }
     }
 }
 
@@ -47,19 +47,19 @@ impl Packet for DataPacket {
         buffer.extend(self.packet_number.to_be_bytes().to_vec());
         buffer.extend(self.data.to_vec());
 
-        return buffer;
+        buffer
     }
 
     fn calculate_packet_size(&self) -> u32 {
-        return 13 + self.data.len() as u32;
+        13 + self.data.len() as u32
     }
 
     fn get_packet_type(&self) -> PacketType {
-        return self.packet_type;
+        self.packet_type
     }
 
     fn as_any(&self) -> &dyn Any {
-        return self;
+        self
     }
 }
 
@@ -70,7 +70,7 @@ mod tests {
     #[test]
     fn test_data_packet() {
         let mut data_packet = DataPacket::new(0, vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 0);
-        data_packet.packet_number = 99 as u32;
+        data_packet.packet_number = 99_u32;
         let buffer = data_packet.to_buffer();
 
         let mut data_packet2 = DataPacket::new(0, Vec::new(), 0);

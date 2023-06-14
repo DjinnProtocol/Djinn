@@ -18,9 +18,9 @@ impl ApplicationConfig {
         };
 
         let user_config: ApplicationConfig = serde_yaml::from_str(&yaml).unwrap();
-        let config = defaults.merge(user_config);
+        
 
-        config
+        defaults.merge(user_config)
     }
 
     fn merge(&self, other: ApplicationConfig) -> Self {

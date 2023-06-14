@@ -18,7 +18,7 @@ impl ControlCommand for TransferRequestCommand {
         debug!("Transfer request for {} to {}", path, direction);
 
         //Check if file exists if download request
-        if direction == "toClient" && !fs::metadata(&full_path).await.is_ok() {
+        if direction == "toClient" && fs::metadata(&full_path).await.is_err() {
             let mut params = HashMap::new();
             params.insert("reason".to_string(), TransferDenyReason::FileNotFound.to_string());
 
@@ -32,7 +32,7 @@ impl ControlCommand for TransferRequestCommand {
         //Create job
         let job_id = connection.new_job_id().await;
         let job = Job {
-            id: job_id.clone(),
+            id: job_id,
             job_type: JobType::Transfer,
             status: JobStatus::Pending,
             params: packet.params.clone(),

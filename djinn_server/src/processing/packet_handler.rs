@@ -21,12 +21,12 @@ impl PacketHandler {
             PacketType::Control => {
                 debug!("Control packet received");
                 let control_packet = packet_ref.as_any().downcast_ref::<ControlPacket>().unwrap();
-                self.handle_control_packet(&control_packet, connection).await;
+                self.handle_control_packet(control_packet, connection).await;
             },
             PacketType::Data => {
                 // Throw error
                 let data_packet = packet_ref.as_any().downcast_ref::<DataPacket>().unwrap();
-                self.handle_data_packet(&data_packet, connection).await;
+                self.handle_data_packet(data_packet, connection).await;
             }
         }
     }
@@ -72,7 +72,7 @@ impl PacketHandler {
     }
 
     pub async fn handle_data_packet(&self, packet: &DataPacket, connection: &mut Connection) {
-        let job_id = packet.job_id.clone();
+        let job_id = packet.job_id;
 
         let option_arc_job = connection.get_job(job_id).await;
 
@@ -123,7 +123,7 @@ impl PacketHandler {
                 // Send connection update to all connections
                 let data = connection.data.lock().await;
                 let sender = &data.connections_broadcast_sender.lock().await;
-                sender.send(ConnectionUpdate::new(data.uuid.clone())).expect("Failed to send connection update");
+                sender.send(ConnectionUpdate::new(data.uuid)).expect("Failed to send connection update");
 
                 // Log
                 info!("{} -> server: {}", connection.uuid, file_path);
