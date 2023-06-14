@@ -102,7 +102,7 @@ impl Connection {
             let reader = possible_reader.as_mut().unwrap();
 
             debug!("Waiting for packet");
-            let packets = self.packet_reader.read2(reader, Some(1)).await;
+            let packets = self.packet_reader.read(reader, Some(1)).await;
             debug!("Packet received");
 
             if packets.is_empty() {

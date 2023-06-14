@@ -69,7 +69,7 @@ impl SyncManager {
 
         loop {
             // Read packets
-            let packets = connection.packet_reader.read2(reader, None).await;
+            let packets = connection.packet_reader.read(reader, None).await;
 
             if packets.is_empty() {
                 // Connection closed
