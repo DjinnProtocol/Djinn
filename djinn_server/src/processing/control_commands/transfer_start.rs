@@ -1,7 +1,8 @@
 use async_trait::async_trait;
-use djinn_core_lib::data::packets::DataPacketGenerator;
+use djinn_core_lib::data::packets::{DataPacketGenerator, ControlPacketType};
 use djinn_core_lib::data::packets::{packet::Packet, ControlPacket};
 use djinn_core_lib::jobs::{Job, JobStatus, JobType};
+use std::collections::HashMap;
 use std::error::Error;
 use std::sync::Arc;
 use tokio::io::{AsyncWriteExt};
@@ -110,18 +111,41 @@ impl TransferStartCommand {
         let write_stream_arc = connection.get_write_stream().await;
         let mut write_stream = write_stream_arc.lock().await;
 
+        let mut canceled = false;
+
         for packet in iterator {
+            // Write packet
             let buffer = &packet.to_buffer();
             write_stream.write_all(buffer).await?;
-        }
 
-        // Set the job status to complete
-        let mut job = arc_job.lock().await;
-        job.status = JobStatus::Finished;
+            // Check if the job has been canceled every 5 packets
+            if packet.packet_number % 5 == 0 {
+                let job = arc_job.lock().await;
+
+                if matches!(job.status, JobStatus::Canceled) {
+                    canceled = true;
+                    break;
+                }
+            }
+        }
+        if canceled {
+           // Send transfer cancel packet
+            let mut params = HashMap::new();
+            params.insert("job_id".to_string(), job_id.to_string());
+            let packet = ControlPacket::new(ControlPacketType::TransferCancel, params);
+            let buffer = &packet.to_buffer();
+
+            write_stream.write_all(buffer).await?;
+        } else {
+            // Set the job status to complete
+            let mut job = arc_job.lock().await;
+            job.status = JobStatus::Finished;
+        }
 
         // Flush the write stream
         write_stream.flush().await?;
 
         Ok(())
     }
+
 }

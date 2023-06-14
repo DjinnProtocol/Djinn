@@ -10,6 +10,7 @@ pub enum ControlPacketType {
     TransferAck,
     TransferDeny,
     TransferStart,
+    TransferCancel,
     SyncRequest,
     SyncAck,
     SyncDeny,
@@ -29,27 +30,32 @@ impl ControlPacketType {
             3 => ControlPacketType::TransferAck,
             4 => ControlPacketType::TransferDeny,
             5 => ControlPacketType::TransferStart,
-            6 => ControlPacketType::SyncRequest,
-            7 => ControlPacketType::SyncAck,
-            8 => ControlPacketType::SyncDeny,
-            9 => ControlPacketType::SyncUpdate,
-            10 => ControlPacketType::SyncIndexRequest,
-            11 => ControlPacketType::SyncIndexResponse,
-            12 => ControlPacketType::SyncIndexUpdate,
-            13 => ControlPacketType::None,
+            6 => ControlPacketType::TransferCancel,
+            7 => ControlPacketType::SyncRequest,
+            8 => ControlPacketType::SyncAck,
+            9 => ControlPacketType::SyncDeny,
+            10 => ControlPacketType::SyncUpdate,
+            11 => ControlPacketType::SyncIndexRequest,
+            12 => ControlPacketType::SyncIndexResponse,
+            13 => ControlPacketType::SyncIndexUpdate,
+            14 => ControlPacketType::None,
             _ => panic!("Invalid control packet type"),
         }
     }
 }
 
 pub enum TransferDenyReason {
-    FileNotFound
+    FileNotFound,
+    FileWriteLock,
+    FileReadLock
 }
 
 impl TransferDenyReason {
     pub fn from_string(reason: &str) -> TransferDenyReason {
         match reason {
             "FileNotFound" => TransferDenyReason::FileNotFound,
+            "FileWriteLock" => TransferDenyReason::FileWriteLock,
+            "FileReadLock" => TransferDenyReason::FileReadLock,
             _ => panic!("Invalid transfer deny reason"),
         }
     }
@@ -57,6 +63,8 @@ impl TransferDenyReason {
     pub fn to_string(&self) -> String {
         match self {
             TransferDenyReason::FileNotFound => "FileNotFound".to_string(),
+            TransferDenyReason::FileWriteLock => "FileWriteLock".to_string(),
+            TransferDenyReason::FileReadLock => "FileReadLock".to_string(),
         }
     }
 }

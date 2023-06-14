@@ -14,6 +14,7 @@ impl ControlCommand for TransferRequestCommand {
     async fn execute(&self, connection: &mut Connection, packet: &ControlPacket) -> Result<(), Box<dyn Error>> {
         let path = packet.params.get("file_path").unwrap();
         let direction = packet.params.get("direction").unwrap();
+        let transfer_id = packet.params.get("transfer_id").unwrap();
         let full_path = CONFIG.serving_directory.clone().unwrap() + "/" + path;
         debug!("Transfer request for {} to {}", path, direction);
 
@@ -21,6 +22,7 @@ impl ControlCommand for TransferRequestCommand {
         if direction == "toClient" && fs::metadata(&full_path).await.is_err() {
             let mut params = HashMap::new();
             params.insert("reason".to_string(), TransferDenyReason::FileNotFound.to_string());
+            params.insert("transfer_id".to_string(), transfer_id.to_string());
 
             let response = ControlPacket::new(ControlPacketType::TransferDeny, params);
 
@@ -28,6 +30,23 @@ impl ControlCommand for TransferRequestCommand {
 
             return Ok(());
         }
+
+        // Check if file is currently being transferred and upload request
+        if fs::metadata(full_path.clone() + ".djinn_temp").await.is_ok() && direction == "toServer" {
+            let mut params = HashMap::new();
+            params.insert("reason".to_string(), TransferDenyReason::FileWriteLock.to_string());
+            params.insert("transfer_id".to_string(), transfer_id.to_string());
+
+            let response = ControlPacket::new(ControlPacketType::TransferDeny, params);
+
+            connection.send_packet(response).await?;
+
+            return Ok(());
+
+            //TODO: possible cancel job
+        }
+
+
 
         //Create job
         let job_id = connection.new_job_id().await;

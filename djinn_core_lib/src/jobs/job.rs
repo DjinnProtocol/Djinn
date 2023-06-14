@@ -12,7 +12,8 @@ pub enum JobType {
 pub enum JobStatus {
     Pending,
     Running,
-    Finished
+    Finished,
+    Canceled
 }
 
 pub struct Job {

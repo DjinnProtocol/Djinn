@@ -90,6 +90,11 @@ impl ClientIndexHandler {
         // First proces self deletes
         for (path, type_change) in changes.iter() {
             if type_change == "SELF_DELETE" {
+                // Skip if file is transfering
+                if fs::metadata(path.clone() + ".djinn_temp").await.is_ok() {
+                    continue;
+                }
+
                 // Delete file
                 let mut full_file_path = full_path.clone() + "/" + path;
                 full_file_path = full_file_path.replace("//", "/");
