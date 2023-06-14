@@ -1,17 +1,32 @@
-use clap::{arg, Command};
+use clap::{arg, ArgMatches, Command};
 use djinn_client_lib::DjinnClient;
-
-#[macro_use]
-extern crate log;
-
 
 #[tokio::main]
 async fn main() {
     pretty_env_logger::init();
-    // let mut djinn_client = DjinnClient::new("127.0.0.1".to_string(), 7777).await.unwrap();
 
-    // return djinn_client.sync_internal("/".to_string(), "./files".to_string()).await;
+    // Parse CLI arguments
+    let matches = get_cli_matches();
 
+    //Connect with djinn lib
+    let host_arg = matches.get_one::<String>("host").unwrap();
+    let host = host_arg.to_owned();
+    let port_arg = matches.get_one::<String>("port").unwrap();
+    let port = port_arg.to_owned().parse::<usize>().unwrap();
+
+    let mut djinn_client = DjinnClient::new(host, port).await.unwrap();
+
+    // Handle subcommands
+    handle_subcommand(&matches, &mut djinn_client).await;
+
+    // Disconnect
+    djinn_client
+        .disconnect()
+        .await
+        .expect("Failed to disconnect");
+}
+
+fn get_cli_matches() -> ArgMatches {
     let matches = Command::new("djinn")
         .about("Djinn client CLI")
         .subcommand_required(true)
@@ -38,42 +53,33 @@ async fn main() {
                 .arg(arg!( --target -t [TARGET] "The target to sync to").required(true)),
         );
 
-    let matches = matches.get_matches();
+    matches.get_matches()
+}
 
-    //Connect to the host
-    let host_arg = matches.get_one::<String>("host").unwrap();
-    let host = host_arg.to_owned();
-    let port_arg = matches.get_one::<String>("port").unwrap();
-    let port = port_arg.to_owned().parse::<usize>().unwrap();
-
-    let mut djinn_client = DjinnClient::new(host, port).await.unwrap();
-
+async fn handle_subcommand(matches: &ArgMatches, djinn_client: &mut DjinnClient) {
     match matches.subcommand() {
         Some(("echo", _matches)) => {
             djinn_client.echo().await;
         }
         Some(("get", matches)) => {
-            debug!("Get command called");
             let file_arg = matches.get_one::<String>("file").unwrap();
             let file = file_arg.to_owned();
-            debug!("File: {}", file);
+
             djinn_client.get_as_iterator(file).await;
         }
         Some(("put", matches)) => {
-            debug!("Put command called");
             let file_arg = matches.get_one::<String>("file").unwrap();
             let file = file_arg.to_owned();
-            debug!("File: {}", file);
+
             let destination_arg = matches.get_one::<String>("destination").unwrap();
             let destination = destination_arg.to_owned();
-            debug!("Destination: {}", destination);
-            // djinn_client.put(file, destination).await;
+
+            djinn_client.put(file, destination).await;
         }
         Some(("sync", matches)) => {
-            debug!("Sync command called");
             let path_arg = matches.get_one::<String>("path").unwrap();
             let path = path_arg.to_owned();
-            debug!("Path: {}", path);
+
             let target_arg = matches.get_one::<String>("target").unwrap();
             let target = target_arg.to_owned();
 
@@ -81,9 +87,4 @@ async fn main() {
         }
         _ => unreachable!(),
     }
-
-    djinn_client
-        .disconnect()
-        .await
-        .expect("Failed to disconnect");
 }
