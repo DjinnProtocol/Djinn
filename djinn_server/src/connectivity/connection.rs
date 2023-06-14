@@ -100,7 +100,6 @@ impl Connection {
         let write_stream_arc = data.write_stream.clone();
         let mut write_stream = write_stream_arc.lock().await;
         write_stream.write_all(&buffer).await?;
-        debug!("Written stuff");
 
         Ok(())
     }
@@ -117,11 +116,9 @@ impl Connection {
         drop(data);
 
         loop {
-            debug!("Waiting for broadcast");
             let mut broadcast_receiver = broadcast_receiver_arc.lock().await;
             let broadcast = broadcast_receiver.recv().await;
             drop(broadcast_receiver);
-            debug!("Received broadcast");
 
             match broadcast {
                 Ok(broadcast) => {

@@ -173,7 +173,7 @@ impl SyncManager {
         if all_true {
             // Log checklist
             debug!(
-                "Sync update checklist: {:?}",
+                "Sync update checklist finished: {:?}",
                 self.current_sync_update_checklist
             );
             // Set sync update to false

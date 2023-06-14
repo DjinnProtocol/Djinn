@@ -19,8 +19,6 @@ impl ControlCommand for EchoRequestCommand {
             params: HashMap::new(),
         };
 
-        debug!("Sending echo reply");
-
         connection.send_packet(response).await?;
         Ok(())
     }

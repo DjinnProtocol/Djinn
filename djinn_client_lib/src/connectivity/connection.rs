@@ -93,17 +93,11 @@ impl Connection {
     }
 
     pub async fn read_next_packet(&mut self) -> Result<Option<Box<dyn Packet>>, Box<dyn Error>> {
-        debug!("Waiting for lock");
         let mut possible_reader = self.reader.lock().await;
-        debug!("Lock acquired");
-
 
         if possible_reader.is_some() {
             let reader = possible_reader.as_mut().unwrap();
-
-            debug!("Waiting for packet");
             let packets = self.packet_reader.read(reader, Some(1)).await;
-            debug!("Packet received");
 
             if packets.is_empty() {
                 return Ok(None);

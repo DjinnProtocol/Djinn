@@ -36,7 +36,6 @@ impl Packet for DataPacket {
         } else {
             self.data = vec![]
         }
-        // debug!("Data packet filled from buffer");
     }
 
     fn to_buffer(&self) -> Vec<u8> {

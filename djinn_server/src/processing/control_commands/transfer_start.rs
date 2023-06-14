@@ -48,7 +48,6 @@ impl ControlCommand for TransferStartCommand {
             return Ok(()); //TODO: Handle error
         }
 
-        debug!("Done sending data");
         info!("server -> {}: {}", connection.uuid, file_path);
 
         return Ok(());

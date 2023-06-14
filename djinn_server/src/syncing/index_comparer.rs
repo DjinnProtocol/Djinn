@@ -93,14 +93,11 @@ impl IndexComparer {
         }
 
         //Check for files server has that client does not
-        for (key, timestamp) in &self.server_index {
+        for (key, _) in &self.server_index {
             if &key[..1] == "#" {
                 continue;
             }
             if !self.client_index.contains_key(key) {
-                debug!("Checking for server file: {:?}", key);
-                debug!("Server timestamp: {:?}", timestamp);
-                debug!("Client timestamp: {:?}", client_timestamp);
                 //File does not exist on client
                 result.insert(key.to_string(), "GET".to_string());
             }

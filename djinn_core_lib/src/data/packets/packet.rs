@@ -32,7 +32,6 @@ pub fn duplicate_packet(packet: &Box<dyn Packet>) -> Box<dyn Packet> {
 }
 
 pub fn deserialize_packet(buffer: &Vec<u8>) -> Box<dyn Packet> {
-    // debug!("Buffer length: {}", buffer.len());
     let packet_type_byte = buffer[4];
     let packet_type = PacketType::from_byte(packet_type_byte);
 

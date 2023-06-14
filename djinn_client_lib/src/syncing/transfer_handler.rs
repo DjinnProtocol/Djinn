@@ -99,8 +99,6 @@ impl TransferHandler {
 
         // Get connection read_stream
         let write_stream_arc = connection.write_stream.clone();
-        // let mut writer = BufWriter::new(&mut *write_stream);
-        // TODO: check speed difference between BufWriter and and native stream
 
         for packet in iterator {
             let mut option_write_stream = write_stream_arc.lock().await;
@@ -112,7 +110,6 @@ impl TransferHandler {
             let write_stream = option_write_stream.as_mut().unwrap();
 
             let buffer = &packet.to_buffer();
-            // debug!("Sending length: {}", buffer.len());
             write_stream
                 .write_all(buffer)
                 .await

@@ -176,7 +176,6 @@ impl PacketHandler {
             // Get the file
             let mut full_path = sync_manager.target.clone() + "/" + &transfer.file_path;
             full_path = full_path.replace("//", "/");
-            debug!("Full path: {}", full_path);
             // Create the directories if they don't exist
             create_dir_all(Path::new(&full_path).parent().unwrap())
                 .await

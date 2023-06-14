@@ -26,15 +26,10 @@ impl FsPoller {
             sleep(Duration::from_secs(1)).await;
             //Check if we are syncing
             let is_syncing = is_syncing_arc.lock().await;
-            debug!("Is syncing: {}", *is_syncing);
             if *is_syncing {
-                debug!("Is syncing");
                 self.was_just_syncing = true;
                 continue;
             }
-
-            debug!("Checking");
-
 
             //Check if the index has changed
             let mut new_index_manager = IndexManager::new(self.path.clone());
@@ -89,8 +84,6 @@ impl FsPoller {
             if self.was_just_syncing {
                 self.was_just_syncing = false;
             }
-
-            debug!("Done")
         }
     }
 }

@@ -111,8 +111,6 @@ impl GetCommand {
                     .downcast_ref::<DataPacket>()
                     .unwrap();
 
-                // debug!("Reveived: {:?}", String::from_utf8(data_packet.data.clone()));
-
                 if !data_packet.has_data {
                     last_packet_received = true;
                     break;

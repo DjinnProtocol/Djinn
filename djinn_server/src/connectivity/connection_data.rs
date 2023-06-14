@@ -6,8 +6,6 @@ use uuid::Uuid;
 
 use super::ConnectionUpdate;
 
-// use crate::syncing::FileUpdate;
-
 pub struct ConnectionData {
     pub read_stream: Arc<Mutex<ReadHalf<TcpStream>>>,
     pub write_stream: Arc<Mutex<WriteHalf<TcpStream>>>,
