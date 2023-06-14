@@ -105,8 +105,8 @@ impl SyncHandler {
 
         match packet_ref.get_packet_type() {
             PacketType::Control => {
-                info!("Control packet received");
                 let control_packet = packet_ref.as_any().downcast_ref::<ControlPacket>().unwrap();
+                debug!("Control packet received");
 
                 self.handle_control_packet(&control_packet, connection)
                     .await;
