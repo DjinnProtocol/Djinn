@@ -22,6 +22,7 @@ impl ControlCommand for TransferStartCommand {
         packet: &ControlPacket,
     ) -> Result<(), Box<dyn Error>> {
         // Get job
+        debug!("Transfer start command received");
         let arc_job_result = self.get_linked_job(connection, packet).await;
 
         if arc_job_result.is_err() {
@@ -111,6 +112,7 @@ impl TransferStartCommand {
         let write_stream_arc = connection.get_write_stream().await;
         let mut write_stream = write_stream_arc.lock().await;
 
+        debug!("Sending file");
         for packet in iterator {
             // Write packet
             let buffer = &packet.to_buffer();

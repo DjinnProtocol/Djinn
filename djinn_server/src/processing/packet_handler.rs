@@ -1,3 +1,5 @@
+use std::{hash::Hash, collections::HashMap};
+
 use djinn_core_lib::{data::packets::{packet::{Packet}, PacketType, ControlPacketType, ControlPacket, DataPacket}, jobs::JobStatus};
 use filetime::{FileTime, set_file_mtime};
 use tokio::fs::{File, rename};
@@ -123,7 +125,10 @@ impl PacketHandler {
                 // Send connection update to all connections
                 let data = connection.data.lock().await;
                 let sender = &data.connections_broadcast_sender.lock().await;
-                sender.send(ConnectionUpdate::new(data.uuid)).expect("Failed to send connection update");
+
+                let mut update_data: HashMap<String, usize> = HashMap::new();
+                update_data.insert(file_path.clone(), modified_time as usize);
+                sender.send(ConnectionUpdate::new(data.uuid, update_data)).expect("Failed to send connection update");
 
                 // Log
                 info!("{} -> server: {}", connection.uuid, file_path);
