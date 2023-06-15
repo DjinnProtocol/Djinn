@@ -26,10 +26,12 @@ impl FsPoller {
             sleep(Duration::from_secs(1)).await;
             //Check if we are syncing
             let is_syncing = is_syncing_arc.lock().await;
+            debug!("Syncing {}", is_syncing);
             if *is_syncing {
                 self.was_just_syncing = true;
                 continue;
             }
+
 
             //Check if the index has changed
             let mut new_index_manager = IndexManager::new(self.path.clone());
@@ -74,6 +76,10 @@ impl FsPoller {
 
                 write_stream.write_all(packet.to_buffer().as_slice()).await?;
                 write_stream.flush().await?;
+
+                debug!("SENT INDEX UPDATE, {:?}", index);
+
+
 
                 //Update index manager
                 if !self.was_just_syncing {
