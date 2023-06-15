@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use crate::{connectivity::Connection, commands::{EchoCommand, GetCommand}, syncing::SyncManager};
+use crate::{connectivity::Connection, commands::{EchoCommand, GetCommand}, syncing::{SyncManager, UserMonkey}};
 
 pub struct ClientInstance {
   connection: Connection,
@@ -36,6 +36,14 @@ impl ClientInstance {
   pub async fn sync_internal(&mut self, path: String, target: String) {
     let mut handler = SyncManager::new(path, target);
     handler.start(&mut self.connection).await.expect("Sync handler failed");
+  }
+
+  pub async fn monkey_internal(&mut self, path: String, target: String) {
+    let mut monkey = UserMonkey::new(
+        path.clone()
+      );
+
+    monkey.run().await;
   }
 
   pub async fn disconnect(&mut self) -> Result<(), Box<dyn Error>> {

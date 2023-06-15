@@ -51,6 +51,12 @@ fn get_cli_matches() -> ArgMatches {
                 .about("Sync a directory")
                 .arg(arg!( --path -p [PATH] "The path to sync").required(true))
                 .arg(arg!( --target -t [TARGET] "The target to sync to").required(true)),
+        )
+        .subcommand(
+            Command::new("monkey")
+                .about("Act like a monkey")
+                .arg(arg!( --path -p [PATH] "The path to sync").required(true))
+                .arg(arg!( --target -t [TARGET] "The target to sync to").required(true)),
         );
 
     matches.get_matches()
@@ -84,6 +90,15 @@ async fn handle_subcommand(matches: &ArgMatches, djinn_client: &mut DjinnClient)
             let target = target_arg.to_owned();
 
             djinn_client.sync_internal(path, target).await;
+        }
+        Some(("monkey", matches)) => {
+            let path_arg = matches.get_one::<String>("path").unwrap();
+            let path = path_arg.to_owned();
+
+            let target_arg = matches.get_one::<String>("target").unwrap();
+            let target = target_arg.to_owned();
+
+            djinn_client.monkey_internal(path, target).await;
         }
         _ => unreachable!(),
     }
