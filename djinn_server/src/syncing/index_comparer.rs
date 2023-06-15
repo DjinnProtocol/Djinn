@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use serde::__private::de;
+
 #[derive(Copy, Clone)]
 pub enum SourceOfTruth {
     Client,
@@ -50,42 +52,53 @@ impl IndexComparer {
 
         //Changes from client perspective
         for (key, timestamp) in &self.client_index {
+            debug!("Checking key from client: {}", key);
             if &key[..1] == "#" {
                 continue;
             }
             //Check if key exists in server index (file exists on server)
             if self.server_index.contains_key(key) {
+                debug!("Key exists on server");
                 //Check if timestamp is the same
                 if self.server_index.get(key).unwrap() == timestamp {
+                    debug!("Timestamp is the same, so skipping");
                     //File is the same
                     continue;
                 } else if timestamp == &0 {
+                    debug!("Timestamp is 0");
                     // Client requests delete
                     if matches!(self.source_of_truth, SourceOfTruth::Client)
                         && client_timestamp > self.server_index.get(key).unwrap()
                     {
+                        debug!("Client timestamp is greater than server file timestamp, so deleting");
                         //File delete
                         result.insert(key.to_string(), "SELF_DELETE".to_string());
                     } else {
+                        debug!("Client timestamp is less than server file timestamp or server mode, so ask client to get");
                         //File does not exist on client
                         result.insert(key.to_string(), "GET".to_string());
                     }
                 } else if self.server_index.get(key).unwrap() > timestamp {
+                    debug!("Server file timestamp is greater than client file timestamp, so ask client to get");
                     //Server has newer version
                     result.insert(key.to_string(), "GET".to_string());
                 } else {
+                    debug!("Server file timestamp is less than client file timestamp, so ask client to put");
                     //Client has newer version
                     result.insert(key.to_string(), "PUT".to_string());
                 }
             } else if timestamp != &0 {
+                debug!("Key does not exist on server and timestamp is not 0)");
                 let possible_deleted_timestamp = self.server_deleted.get(key);
                 if matches!(self.source_of_truth, SourceOfTruth::Client)
                     && (possible_deleted_timestamp.is_none()
                         || possible_deleted_timestamp.unwrap() < timestamp)
                 {
+                    debug!("Is not just a deleted file, so ask client to put");
                     //File does not exist on server
                     result.insert(key.to_string(), "PUT".to_string());
                 } else {
+                    debug!("Is just a deleted file after this update, so ask client to delete");
                     //File delete
                     result.insert(key.to_string(), "DELETE".to_string());
                 }
