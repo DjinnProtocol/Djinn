@@ -19,7 +19,7 @@ impl UserMonkey {
             files: Vec::new(),
             amount_of_files: 20,
             seconds: 1,
-            data_size_kb: 1000,
+            data_size_kb: 1,
         }
     }
 
