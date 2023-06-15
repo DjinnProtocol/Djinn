@@ -576,6 +576,7 @@ dependencies = [
  "djinn_core_lib",
  "filetime",
  "log",
+ "rand",
  "tokio",
 ]
 

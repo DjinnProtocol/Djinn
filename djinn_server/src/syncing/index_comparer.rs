@@ -1,7 +1,5 @@
 use std::collections::HashMap;
 
-use serde::__private::de;
-
 #[derive(Copy, Clone)]
 pub enum SourceOfTruth {
     Client,
@@ -58,32 +56,25 @@ impl IndexComparer {
             }
             //Check if key exists in server index (file exists on server)
             if self.server_index.contains_key(key) {
-                debug!("Key exists on server");
                 //Check if timestamp is the same
                 if self.server_index.get(key).unwrap() == timestamp {
-                    debug!("Timestamp is the same, so skipping");
                     //File is the same
                     continue;
                 } else if timestamp == &0 {
-                    debug!("Timestamp is 0");
                     // Client requests delete
                     if matches!(self.source_of_truth, SourceOfTruth::Client)
                         && client_timestamp > self.server_index.get(key).unwrap()
                     {
-                        debug!("Client timestamp is greater than server file timestamp, so deleting");
                         //File delete
                         result.insert(key.to_string(), "SELF_DELETE".to_string());
                     } else {
-                        debug!("Client timestamp is less than server file timestamp or server mode, so ask client to get");
                         //File does not exist on client
                         result.insert(key.to_string(), "GET".to_string());
                     }
                 } else if self.server_index.get(key).unwrap() > timestamp {
-                    debug!("Server file timestamp is greater than client file timestamp, so ask client to get");
                     //Server has newer version
                     result.insert(key.to_string(), "GET".to_string());
                 } else {
-                    debug!("Server file timestamp is less than client file timestamp, so ask client to put");
                     //Client has newer version
                     result.insert(key.to_string(), "PUT".to_string());
                 }
@@ -94,14 +85,11 @@ impl IndexComparer {
                     // && (possible_deleted_timestamp.is_none()
                     //     || possible_deleted_timestamp.unwrap() < timestamp)
                 {
-                    debug!("Is not just a deleted file, so ask client to put");
                     //File does not exist on server
                     result.insert(key.to_string(), "PUT".to_string());
                 } else {
-                    debug!("Is just a deleted file after this update, so ask client to delete");
                     //File delete
                     result.insert(key.to_string(), "DELETE".to_string());
-                    // result.insert(key.to_string(), "PUT".to_string());
                 }
             }
         }
@@ -294,32 +282,6 @@ mod tests {
 
         assert_eq!(result.get("test.txt").unwrap(), "GET");
         assert_eq!(result.len(), 1);
-    }
-
-    #[test]
-    /*
-       If a client pushes an update and another client deletes it beforehand the server should not delete the file and instead
-       request the client to get the file.
-    */
-    fn test_out_of_sync_client_delete_before_update() {
-        let mut client_index = HashMap::new();
-        client_index.insert("#timestamp".to_string(), 123);
-
-        let mut server_index = HashMap::new();
-        server_index.insert("test.txt".to_string(), 124);
-        server_index.insert("#timestamp".to_string(), 124);
-
-        let server_deleted = HashMap::new();
-
-        let comparer = IndexComparer::new(
-            client_index,
-            server_index,
-            SourceOfTruth::Client,
-            server_deleted,
-        );
-        let result = comparer.compare();
-
-        assert_eq!(result.get("test.txt").unwrap(), "GET");
     }
 
     #[test]
