@@ -1,10 +1,19 @@
-use std::{path::Path, collections::HashMap};
+use std::{collections::HashMap, path::Path};
 
-use djinn_core_lib::data::{packets::{packet::Packet, PacketType, ControlPacket, DataPacket, ControlPacketType}, syncing::IndexManager};
-use filetime::{FileTime, set_file_mtime};
-use tokio::{fs::{create_dir_all, File, rename}, io::AsyncWriteExt};
+use djinn_core_lib::data::{
+    packets::{packet::Packet, ControlPacket, ControlPacketType, DataPacket, PacketType},
+    syncing::IndexManager,
+};
+use filetime::{set_file_mtime, FileTime};
+use tokio::{
+    fs::{create_dir_all, rename, File},
+    io::AsyncWriteExt,
+};
 
-use crate::{connectivity::Connection, syncing::{TransferStatus, fs_poller::FsPoller, TransferDirection, TransferHandler}};
+use crate::{
+    connectivity::Connection,
+    syncing::{fs_poller::FsPoller, TransferDirection, TransferHandler, TransferStatus},
+};
 
 use super::SyncManager;
 
@@ -40,13 +49,17 @@ impl PacketHandler {
         }
     }
 
-    pub async fn handle_control_packet(&self, sync_manager: &mut SyncManager, packet: &ControlPacket, connection: &Connection) {
+    pub async fn handle_control_packet(
+        &self,
+        sync_manager: &mut SyncManager,
+        packet: &ControlPacket,
+        connection: &Connection,
+    ) {
         match packet.control_packet_type {
             ControlPacketType::SyncIndexRequest => {
                 let full_path = sync_manager.target.clone();
                 let mut index_manager = IndexManager::new(full_path);
                 index_manager.build().await;
-
 
                 let mut params = HashMap::new();
                 let index = index_manager.index;
@@ -60,13 +73,16 @@ impl PacketHandler {
                 let mut packet = ControlPacket::new(ControlPacketType::SyncIndexResponse, params);
                 packet.job_id = sync_manager.job_id;
                 connection.send_packet(packet).await.unwrap();
+
+                // Log
+                debug!("Sync index response sent: {:?}", index);
             }
             ControlPacketType::SyncUpdate => {
                 debug!("Sync update received");
                 sync_manager.handle_sync_update(packet, connection).await;
             }
             ControlPacketType::SyncAck => {
-                debug!("Sync ack received");
+                info!("Sync ack received");
                 let job_id = packet.params.get("job_id").unwrap().parse::<u32>().unwrap();
                 sync_manager.job_id = Some(job_id);
 
@@ -78,7 +94,10 @@ impl PacketHandler {
 
                 tokio::spawn(async move {
                     let mut fs_poller = FsPoller::new(new_target, new_job_id);
-                    fs_poller.poll(write_stream_arc, new_is_syncing).await.unwrap();
+                    fs_poller
+                        .poll(write_stream_arc, new_is_syncing)
+                        .await
+                        .unwrap();
                 });
             }
             ControlPacketType::SyncDeny => {
@@ -119,18 +138,23 @@ impl PacketHandler {
 
                 // Start the transfer
                 if matches!(transfer.direction, TransferDirection::ToClient) {
+                    debug!("Sending transfer start packet");
                     let mut packet =
-                    ControlPacket::new(ControlPacketType::TransferStart, HashMap::new());
-                packet
-                    .params
-                    .insert("job_id".to_string(), job_id.clone().to_string());
-                connection
-                    .send_packet(packet)
-                    .await
-                    .expect("Failed to send transfer start packet");
+                        ControlPacket::new(ControlPacketType::TransferStart, HashMap::new());
+                    packet
+                        .params
+                        .insert("job_id".to_string(), job_id.clone().to_string());
+                    connection
+                        .send_packet(packet)
+                        .await
+                        .expect("Failed to send transfer start packet");
+                    debug!("Transfer start packet sent")
                 } else {
+                    debug!("Start sending file");
                     let transfer_handler = TransferHandler::new();
-                    transfer_handler.start_sending_file(sync_manager, &transfer, connection).await;
+                    transfer_handler
+                        .start_sending_file(sync_manager, &transfer, connection)
+                        .await;
                 }
             }
             ControlPacketType::TransferDeny => {
@@ -149,6 +173,11 @@ impl PacketHandler {
                 let mut transfer = transfer_arc.lock().await;
 
                 transfer.status = TransferStatus::Denied;
+
+                // Cross of checklist
+                sync_manager
+                    .write_off_sync_update_checklist(transfer.file_path.clone())
+                    .await;
 
                 //TODO: handle deny reason
             }
@@ -204,7 +233,9 @@ impl PacketHandler {
                     .unwrap();
 
                 // Update checklist
-                sync_manager.write_off_sync_update_checklist(transfer.file_path.clone()).await;
+                sync_manager
+                    .write_off_sync_update_checklist(transfer.file_path.clone())
+                    .await;
             }
         } else {
             panic!("Transfer data received for transfer that is not in progress")

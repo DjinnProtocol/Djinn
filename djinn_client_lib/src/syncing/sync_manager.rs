@@ -3,7 +3,7 @@ use std::{collections::HashMap, error::Error, sync::Arc};
 use djinn_core_lib::data::packets::{ControlPacket, ControlPacketType};
 
 use tokio::{
-    fs::remove_file,
+    fs::{remove_file, self},
     io::{BufReader, ReadHalf},
     net::TcpStream,
     sync::Mutex,
@@ -119,9 +119,12 @@ impl SyncManager {
                 // Delete the file from the client
                 info!("Deleting file {}", key);
 
-                remove_file(self.target.clone() + "/" + &key)
-                    .await
-                    .expect("Failed to delete file");
+                // Check if file exists
+                if fs::metadata(self.target.clone() + "/" + &key).await.is_ok() {
+                    remove_file(self.target.clone() + "/" + &key)
+                        .await
+                        .expect("Failed to delete file");
+                }
 
                 self.write_off_sync_update_checklist(key.clone()).await;
             } else if value == "PUT" {
@@ -160,6 +163,7 @@ impl SyncManager {
     }
 
     pub async fn write_off_sync_update_checklist(&mut self, path: String) {
+        debug!("Writing off sync update checklist: {}", path);
         self.current_sync_update_checklist.insert(path, true);
 
         // Check if all values are true

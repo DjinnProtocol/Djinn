@@ -100,6 +100,8 @@ impl TransferHandler {
         // Get connection read_stream
         let write_stream_arc = connection.write_stream.clone();
 
+        debug!("Sending file loop {}", file_path);
+
         for packet in iterator {
             let mut option_write_stream = write_stream_arc.lock().await;
 
