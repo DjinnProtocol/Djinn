@@ -100,7 +100,8 @@ impl IndexComparer {
                 } else {
                     debug!("Is just a deleted file after this update, so ask client to delete");
                     //File delete
-                    result.insert(key.to_string(), "DELETE".to_string());
+                    // result.insert(key.to_string(), "DELETE".to_string());
+                    result.insert(key.to_string(), "PUT".to_string());
                 }
             }
         }

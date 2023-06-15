@@ -69,13 +69,18 @@ impl ClientIndexHandler {
 
         debug!("{} Server index: {:?}", connection.uuid, server_index_manager.index);
         debug!("{} Client index: {:?}", connection.uuid, self.client_index);
+        let server_deletes = SERVER_DELETES.lock().await;
+        let clone_server_deletes = server_deletes.clone();
+        drop(server_deletes);
+
+        debug!("{} Server deletes: {:?}", connection.uuid, clone_server_deletes.clone());
 
         // Get index comparer
         let index_comparer = IndexComparer::new(
             self.client_index.clone(),
             server_index_manager.index,
             self.source_of_truth,
-            SERVER_DELETES.lock().await.clone(),
+            clone_server_deletes
         );
 
         let changes = index_comparer.compare();
