@@ -91,8 +91,8 @@ impl IndexComparer {
                 debug!("Key does not exist on server and timestamp is not 0)");
                 let possible_deleted_timestamp = self.server_deleted.get(key);
                 if matches!(self.source_of_truth, SourceOfTruth::Client)
-                    && (possible_deleted_timestamp.is_none()
-                        || possible_deleted_timestamp.unwrap() < timestamp)
+                    // && (possible_deleted_timestamp.is_none()
+                    //     || possible_deleted_timestamp.unwrap() < timestamp)
                 {
                     debug!("Is not just a deleted file, so ask client to put");
                     //File does not exist on server
@@ -100,8 +100,8 @@ impl IndexComparer {
                 } else {
                     debug!("Is just a deleted file after this update, so ask client to delete");
                     //File delete
-                    // result.insert(key.to_string(), "DELETE".to_string());
-                    result.insert(key.to_string(), "PUT".to_string());
+                    result.insert(key.to_string(), "DELETE".to_string());
+                    // result.insert(key.to_string(), "PUT".to_string());
                 }
             }
         }
