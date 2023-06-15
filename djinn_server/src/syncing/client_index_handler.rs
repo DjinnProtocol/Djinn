@@ -133,7 +133,9 @@ impl ClientIndexHandler {
                 // Broadcast delete to all clients
                 let data = connection.data.lock().await;
                 let sender = &data.connections_broadcast_sender.lock().await;
-                sender.send(ConnectionUpdate::new(data.uuid)).expect("Failed to send connection update");
+                let mut update_data = HashMap::new();
+                update_data.insert(path.clone(), 0);
+                sender.send(ConnectionUpdate::new(data.uuid, update_data)).expect("Failed to send connection update");
             }
         }
 

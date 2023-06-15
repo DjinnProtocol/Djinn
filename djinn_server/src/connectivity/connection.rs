@@ -1,4 +1,4 @@
-use std::{error::Error, sync::Arc};
+use std::{error::Error, sync::Arc, hash::Hash, collections::HashMap};
 
 use super::{ConnectionData, ConnectionUpdate, ConnectionUpdateType};
 use crate::{
@@ -6,7 +6,7 @@ use crate::{
     syncing::{ClientIndexHandler, SourceOfTruth},
 };
 use djinn_core_lib::{
-    data::packets::{packet::Packet, PacketReader},
+    data::packets::{packet::Packet, PacketReader, ControlPacket, ControlPacketType},
     jobs::{Job, JobType},
 };
 use tokio::{
@@ -14,7 +14,7 @@ use tokio::{
     net::TcpStream,
     sync::Mutex,
 };
-use uuid::Uuid;
+use uuid::{Uuid, timestamp};
 
 pub struct Connection {
     pub uuid: Uuid,
@@ -154,15 +154,54 @@ impl Connection {
                 let last_index = data.last_index.clone();
                 drop(data);
 
-                if arc_sync_job.is_some() {
-                    debug!("Processing client index");
-                    let client_index_handler = ClientIndexHandler::new(
-                        last_index,
-                        arc_sync_job.unwrap(),
-                        SourceOfTruth::Server,
-                    );
-                    client_index_handler.handle(self).await;
+                let mut changes: HashMap<String, String> = HashMap::new();
+
+                for (path, timestamp) in connection_update.data {
+                    let last_timestamp = last_index.get(&path);
+
+                    // If files is created/updates
+                    if timestamp != 0 {
+                        // File not in client index
+                        if last_timestamp.is_none() {
+                            changes.insert(path, "GET".to_owned());
+                        } else { // File in client index
+                            let last_timestamp = last_timestamp.unwrap();
+
+                            // File has been updated
+                            if last_timestamp < &timestamp {
+                                changes.insert(path, "GET".to_owned());
+                            } else {
+                                // Skip because client will push themselves
+                            }
+                        }
+                    } else { // File is deleted
+                        // File not in client index
+                        if last_timestamp.is_none() {
+                            // Skip because client doesn't have file
+                        } else { // File in client index
+                            // Delete file
+                            changes.insert(path, "DELETE".to_owned());
+                        }
+                    }
+
+                    // Send sync update to client
+                    let mut response = ControlPacket::new(ControlPacketType::SyncUpdate, changes.clone());
+                    let sync_job = arc_sync_job.as_ref().unwrap().lock().await;
+                    response.job_id = Some(sync_job.id);
+                    // Send packet
+                    self.send_packet(response).await.unwrap();
+                    self.flush().await;
                 }
+
+                // if arc_sync_job.is_some() {
+                //     debug!("Processing client index");
+                //     let client_index_handler = ClientIndexHandler::new(
+                //         last_index,
+                //         arc_sync_job.unwrap(),
+                //         SourceOfTruth::Server,
+                //     );
+                //     client_index_handler.handle(self).await;
+                // }
             }
         }
     }
