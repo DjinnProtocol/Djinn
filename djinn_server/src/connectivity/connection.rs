@@ -159,7 +159,7 @@ impl Connection {
                     let client_index_handler = ClientIndexHandler::new(
                         last_index,
                         arc_sync_job.unwrap(),
-                        SourceOfTruth::Client
+                        SourceOfTruth::Server,
                     );
                     client_index_handler.handle(self).await;
                 }
