@@ -27,7 +27,7 @@ impl ClientIndexHandler {
 
     pub async fn handle(&self, connection: &mut Connection) {
         // Generate changes
-        let changes_result = self.generate_changes().await;
+        let changes_result = self.generate_changes(connection).await;
 
         if changes_result.is_err() {
             return; //TODO: Handle error
@@ -56,7 +56,8 @@ impl ClientIndexHandler {
     }
 
     async fn generate_changes(
-        &self
+        &self,
+        connection: &mut Connection,
     ) -> Result<HashMap<String, String>, Box<dyn Error + Send + Sync>> {
         // Get server index
         let sync_job = self.arc_sync_job.lock().await;
@@ -66,6 +67,9 @@ impl ClientIndexHandler {
         let mut server_index_manager = IndexManager::new(full_path.clone());
         server_index_manager.build().await;
 
+        debug!("{} Server index: {:?}", connection.uuid, server_index_manager.index);
+        debug!("{} Client index: {:?}", connection.uuid, self.client_index);
+
         // Get index comparer
         let index_comparer = IndexComparer::new(
             self.client_index.clone(),
@@ -74,7 +78,11 @@ impl ClientIndexHandler {
             SERVER_DELETES.lock().await.clone(),
         );
 
-        Ok(index_comparer.compare())
+        let changes = index_comparer.compare();
+
+        debug!("{} Changes: {:?}", connection.uuid, changes);
+
+        Ok(changes)
     }
 
     async fn process_changes(
