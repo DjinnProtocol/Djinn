@@ -5,24 +5,28 @@ use tokio::fs::{self, File};
 use tokio::io::{AsyncWriteExt, AsyncReadExt};
 
 pub struct UserMonkey {
-    path: String,
+    target: String,
     files: Vec<PathBuf>,
     amount_of_files: u32,
+    seconds: u32,
+    data_size_kb: usize,
 }
 
 impl UserMonkey {
-    pub fn new(path: String) -> Self {
+    pub fn new(target: String) -> Self {
         UserMonkey {
-            path,
+            target,
             files: Vec::new(),
-            amount_of_files: 100
+            amount_of_files: 20,
+            seconds: 1,
+            data_size_kb: 1000,
         }
     }
 
     pub async fn run(&mut self) {
         loop {
             // Get current directory list but only files which contain "banana_"
-            let mut files = fs::read_dir(self.path.clone()).await.expect("Failed to read directory");
+            let mut files = fs::read_dir(self.target.clone()).await.expect("Failed to read directory");
             let mut new_files: Vec<PathBuf> = Vec::new();
 
             while let Ok(Some(file)) = files.next_entry().await {
@@ -47,7 +51,7 @@ impl UserMonkey {
             }
 
             // Delay the loop
-            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+            tokio::time::sleep(std::time::Duration::from_secs(self.seconds.into())).await;
         }
     }
 
@@ -76,9 +80,27 @@ impl UserMonkey {
 
         let file_name = format!("banana_{}.txt", random_number);
 
-        let file = File::create(self.path.clone() + "/" + &file_name).await.expect("Failed to create file");
+        debug!("Creating file {}", self.target.clone() + "/" + &file_name);
+
+        let mut file = File::create(self.target.clone() + "/" + &file_name).await.expect("Failed to create file");
+
+        // Write random data to the file
+        let mut data: Vec<u8> = Vec::new();
+        let random_value: u8 = rng.gen_range(0..=100);
+        for _ in 0..self.data_size_kb * 1024 {
+            data.push(random_value);
+        }
+
+        file.write_all(&data).await.expect("Failed to write to file");
+
+        // Log
+        info!("Created file {}", self.target.clone() + "/" + &file_name);
     }
     async fn update_file(&self) {
+        if self.files.len() == 0 {
+            return;
+        }
+
         let file_path = self.random_file();
 
         let mut file = File::open(&file_path).await.expect("Failed to open file");
@@ -87,18 +109,33 @@ impl UserMonkey {
         file.read_to_end(&mut content).await.expect("Failed to read file");
 
         let mut rng = rand::thread_rng();
-        let random_value: u32 = rng.gen_range(0..=100);
-
-        let new_content = format!("Updated value: {}", random_value);
 
         let mut file = File::create(&file_path).await.expect("Failed to create file");
-        file.write_all(new_content.as_bytes()).await.expect("Failed to write to file");
+
+         // Write random data to the file
+         let mut data: Vec<u8> = Vec::new();
+         let random_value: u8 = rng.gen_range(0..=100);
+         for _ in 0..self.data_size_kb {
+             data.push(random_value);
+         }
+
+         file.write_all(&data).await.expect("Failed to write to file");
+
+        // Log
+        info!("Updated file {}", file_path.to_str().unwrap());
     }
 
     async fn delete_file(&self) {
+        if self.files.len() == 0 {
+            return;
+        }
+
         let file_path = self.random_file();
 
         fs::remove_file(&file_path).await.expect("Failed to delete file");
+
+        // Log
+        info!("Deleted file {}", file_path.to_str().unwrap());
     }
 
     fn random_file(&self) -> PathBuf {

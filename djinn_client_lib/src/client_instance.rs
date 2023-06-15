@@ -40,7 +40,7 @@ impl ClientInstance {
 
   pub async fn monkey_internal(&mut self, path: String, target: String) {
     let mut monkey = UserMonkey::new(
-        path.clone()
+        target.clone()
       );
 
     monkey.run().await;
